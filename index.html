@@ -663,7 +663,7 @@ button{cursor:pointer}
     (DATA.skillCoef['ゆくせさり'] || []).some(e => e.name === n || e.name === n + 'のスーツ') ||
     (DATA.ultCoef['ゆくせさり'] || []).some(e => e.name.startsWith(n) || n.startsWith(e.name.replace(/\d+$/, '')));
   yukuNames['セントリーガン'] = new Set(['1', '2', '3', '4']); yukuNames['炸裂セントリーガン'] = new Set(['5']); yukuNames['雷神の太鼓'] = new Set(['5']);
-  if (!yukuNames['もんどころ']) yukuNames['もんどころ'] = new Set();
+  if (!yukuNames['もんどころ']) yukuNames['もんどころ'] = new Set(['5']);
   const yukuOrder = Object.keys(yukuNames).filter(yukuRelevant);
   const yukuGroups = (() => {
     const g = { 'ランク5': [], 'ランク4': [], 'ランク3': [], 'ランク2': [], 'ランク1': [], 'ランクゆくせ': [], 'その他': [] };
