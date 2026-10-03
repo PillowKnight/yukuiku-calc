@@ -4,13 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ゆっくり育てていってね！ ダメージ計算機（ゆく育 与ダメージ計算）</title>
-<meta name="description" content="『ゆっくり育てていってね！』（ゆく育）の与ダメージを計算する非公式ツール。キャラ・武器・ゆくせさり・必殺技・バフを選ぶだけで、通常・クリティカル・期待値を計算できます。">
 <meta name="google-site-verification" content="f4YcD3KOXhMslPAr7dWKIGpKadvgRL6tnRkHre1FDss" />
+<meta name="description" content="『ゆっくり育てていってね！』（ゆく育）の与ダメージを計算する非公式ツール。キャラ・武器・ゆくせさり・必殺技・バフを選ぶだけで、通常・クリティカル・期待値を計算できます。">
 <meta name="keywords" content="ゆっくり育てていってね,ゆく育,ダメージ計算,計算機,与ダメージ,バフ">
+<link rel="canonical" href="https://pillowknight.github.io/yukuiku-calc/">
 <meta property="og:type" content="website">
+<meta property="og:url" content="https://pillowknight.github.io/yukuiku-calc/">
 <meta property="og:title" content="ゆっくり育てていってね！ ダメージ計算機">
 <meta property="og:description" content="ゆく育の与ダメージを計算する非公式ツール。">
 <meta property="og:locale" content="ja_JP">
+<meta name="twitter:card" content="summary">
 <style>
 :root{--bg:#f6f7f9;--fg:#1d2433;--card:#fff;--line:#d9dde5;--acc:#2f6fed;--muted:#6b7385;--off:#f0f1f4}
 @media (prefers-color-scheme:dark){:root{--bg:#14171d;--fg:#e6e9f0;--card:#1d2129;--line:#343a47;--acc:#6b9cff;--muted:#98a1b3;--off:#242933}}
@@ -660,6 +663,7 @@ button{cursor:pointer}
     (DATA.skillCoef['ゆくせさり'] || []).some(e => e.name === n || e.name === n + 'のスーツ') ||
     (DATA.ultCoef['ゆくせさり'] || []).some(e => e.name.startsWith(n) || n.startsWith(e.name.replace(/\d+$/, '')));
   yukuNames['セントリーガン'] = new Set(['1', '2', '3', '4']); yukuNames['炸裂セントリーガン'] = new Set(['5']); yukuNames['雷神の太鼓'] = new Set(['5']);
+  if (!yukuNames['もんどころ']) yukuNames['もんどころ'] = new Set();
   const yukuOrder = Object.keys(yukuNames).filter(yukuRelevant);
   const yukuGroups = (() => {
     const g = { 'ランク5': [], 'ランク4': [], 'ランク3': [], 'ランク2': [], 'ランク1': [], 'ランクゆくせ': [], 'その他': [] };
@@ -771,7 +775,8 @@ button{cursor:pointer}
   const unchecked = new Set();
   let saves = [], saveSeq = 0;
   function initState() {
-    state = { party: [emptyMember()], others: { ults: [], skills: {}, spear: false, wing: false, general: false, glory: false, herd: true, herdN: 4, flags: {} }, ojisan: {}, manual: {}, coefOv: {}, ov: {}, global: { achv: 0.1, sortie: 10000, yomogi: 300, wakiRate: 0.01 } };
+    const keepAchv = state && state.global && state.global.achv != null ? state.global.achv : 0.1;
+    state = { party: [emptyMember()], others: { ults: [], skills: {}, spear: false, wing: false, general: false, glory: false, herd: true, herdN: 4, flags: {} }, ojisan: {}, manual: {}, coefOv: {}, ov: {}, global: { achv: keepAchv, sortie: 10000, yomogi: 300, wakiRate: 0.01 } };
   }
   try { const s = localStorage.getItem(KEY); state = s ? JSON.parse(s) : null; } catch (e) { state = null; }
   if (!state || !state.party || state.party.length !== 1 || !state.others) initState();
@@ -893,6 +898,12 @@ button{cursor:pointer}
     const rest = rows.filter(u => !isTop(u));
     const groups = [['自分（ダメージ元）', rest.filter(u => u.e.owner === 0), true], ['他者から受けるバフ', rest.filter(u => u.e.owner > 0), false]];
     let h = '';
+    const g0 = state.global, dl = state.party[0];
+    const ex = [];
+    if (dl.weapon === 'かみさまのナイフ') ex.push(`<tr><td></td><td class="nm">かみさまのナイフ<div class="note">出撃回数÷10を通常攻撃に加算（必殺技は蒼の奇蹟/例の紐のとき÷20）</div></td><td><label class="mini">出撃回数<input type="number" min="0" value="${g0.sortie}" data-a="g" data-f="sortie"></label></td></tr>`);
+    if (dl.yuku && dl.yuku.name === 'もんどころ') ex.push(`<tr><td></td><td class="nm">もんどころ<div class="note">ヨモギ化発動回数に応じて威力が上がる</div></td><td><label class="mini">ヨモギ化発動回数<input type="number" min="0" max="300" value="${g0.yomogi}" data-a="g" data-f="yomogi"></label></td></tr>`);
+    if (dl.yuku && dl.yuku.name === '脇差・子狐丸') ex.push(`<tr><td></td><td class="nm">脇差・子狐丸<div class="note">クリティカル時に一定確率で孤立可変×50</div></td><td><label class="mini">プロック率(%)<input type="number" min="0" max="100" step="0.1" value="${Math.round(g0.wakiRate * 10000) / 100}" data-a="g" data-f="wakiRate"></label></td></tr>`);
+    if (ex.length) h += '<table class="buf"><tbody>' + ex.join('') + '</tbody></table>';
     if (topRows.length) {
       h += '<table class="buf"><tbody>';
       for (const u of topRows) {
@@ -971,6 +982,10 @@ button{cursor:pointer}
       if (u.ov.rate != null && +u.ov.rate !== 1) t += '（' + u.ov.rate + '）';
       if (!seen.has(t)) { seen.add(t); names.push(t); }
     }
+    const dl = state.party[0], g0 = state.global;
+    if (dl.weapon === 'かみさまのナイフ') names.push('かみさまのナイフ（出撃回数' + g0.sortie + '）');
+    if (dl.yuku && dl.yuku.name === 'もんどころ') names.push('もんどころ（ヨモギ化' + g0.yomogi + '回）');
+    if (dl.yuku && dl.yuku.name === '脇差・子狐丸') names.push('脇差・子狐丸（プロック率' + Math.round(g0.wakiRate * 10000) / 100 + '%）');
     return names;
   }
   function imgInfo(res) {
@@ -1131,9 +1146,7 @@ button{cursor:pointer}
     const R0 = h; h = '';
     h += `<section><h2>全体設定</h2><div class="grid">
       <label>攻撃実績バフ(%) <input type="number" min="0" max="10" step="0.5" value="${(g.achv * 100)}" data-a="g" data-f="achv"> <span class="muted">最大10（=110%）。ゆっくり対戦では0</span></label>
-      <label>出撃回数（かみさまのナイフ） <input type="number" min="0" value="${g.sortie}" data-a="g" data-f="sortie"></label>
-      <label>ヨモギ化発動回数（もんどころ） <input type="number" min="0" max="300" value="${g.yomogi}" data-a="g" data-f="yomogi"></label>
-      <label>子狐丸のプロック率(%) <input type="number" min="0" max="100" step="0.1" value="${Math.round(g.wakiRate * 10000) / 100}" data-a="g" data-f="wakiRate"></label></div></section>`;
+</div><p class="muted">この設定は「入力を初期化」でも変わりません。</p></section>`;
     h += manualPanel(res);
     const sy = window.scrollY;
     $('#app').innerHTML = `<div class="cols"><div class="left">${L0}${bh}${h}</div><div class="right">${R0}</div></div>`;
