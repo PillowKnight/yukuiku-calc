@@ -26,7 +26,7 @@
 - 2026-10-03 十ゆん十色の数値を更新 / 元攻撃力バフ(±)の誤りを修正 / 係数の置き換え・画像出力を追加
 
 ## 情報提供・不具合報告
-Issues、またはXなどでご連絡ください。（連絡先を書く場合はここに）
+Issues、またはXなどでご連絡ください。https://x.com/TorNerd_Active
 
 ## 出典
-ゆっくり育てていってね！ 非公式Wiki（seesaawiki）
+ゆっくり育てていってね！ 非公式Wiki（seesaawiki）https://seesaawiki.jp/yukkurisodate/
