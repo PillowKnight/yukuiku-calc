@@ -860,7 +860,7 @@ button{cursor:pointer}
     const flagRow = (f, label) => `<label class="sk chk"><input type="checkbox" data-a="oflag" data-f="${f}"${o[f] ? ' checked' : ''}> <span>${label}</span></label>`;
     const fRow = (f, label) => `<label class="sk chk"><input type="checkbox" data-a="ofl" data-f="${f}"${o.flags[f] ? ' checked' : ''}> <span>${label}</span></label>`;
     h += '<h4>スキル・ゆくせさりバフ <button class="btn sm" data-a="reset" data-w="oskill">リセット</button></h4><div class="skills">' + ['鼓舞', 'カリスマ', 'アタックフィールド', 'クリティカルフィールド', 'みんな違ってみんないい', 'デバフ要員'].map(skillRow).join('') +
-      flagRow('wing', '自由への翼（バトンタッチ先に）') + flagRow('glory', '栄光（初期値OFF）') +
+      flagRow('wing', '自由への翼') + flagRow('glory', '栄光') +
       `<label class="sk chk"><input type="checkbox" data-a="oflag" data-f="herd"${o.herd ? ' checked' : ''}> <span>群れとしての強さ　場に出ている数 <input type="number" min="1" max="8" value="${o.herdN}" data-a="oherdn" style="width:4em"> 体（+25%×(n−1)）</span></label></div>`;
     h += `<details class="lowf" data-low="1"${lowOpen ? ' open' : ''}><summary><b>使用頻度の低いバフ</b> <button class="btn sm" data-a="reset" data-w="olow">リセット</button></summary><div class="skills">` +
       ['嫌われ者', 'すばらしいこの世界への祝福', 'エレキフィールド', '剣帝陣', '同調圧力'].map(skillRow).join('') +
