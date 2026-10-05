@@ -185,6 +185,7 @@ button{cursor:pointer}
     const r = { only: null, normal: false };
     if (!note) return r;
     if (/通常攻撃の多段hit部分にのみ有効/.test(note)) r.normal = true;
+    if (/追加攻撃にのみ有効/.test(note)) r.only = [{ name: '追加攻撃', rank: null }];
     if (/(にのみ有効|に適用される)/.test(note)) {
       const names = [...note.matchAll(/『(.+?)』/g)].map(m => m[1]);
       if (names.length) r.only = names.map(n => { const m = n.match(/^(.*?)(I{1,3}|IV|V)?$/); return { name: m[1], rank: m[2] || null }; });
@@ -411,6 +412,14 @@ button{cursor:pointer}
       const v = +v0; if (!v || !(ch in A)) continue;
       if (MULT.has(ch)) A[ch] *= (1 + v / 100); else if (ch === 'origFlat') A[ch] += v; else A[ch] += v / 100;
     }
+    const manT = state.manualT;
+    if (manT && atk) for (const [tg, chs] of Object.entries(manT)) {
+      if (!norm(atk.name).includes(norm(tg))) continue;
+      for (const [ch, v0] of Object.entries(chs || {})) {
+        const v = +v0; if (!v || !(ch in A)) continue;
+        if (MULT.has(ch)) A[ch] *= (1 + v / 100); else if (ch === 'origFlat') A[ch] += v; else A[ch] += v / 100;
+      }
+    }
     return { A, used };
   }
 
@@ -449,6 +458,7 @@ button{cursor:pointer}
     const mk = o => { o.rankNum = o.rankNum || 0; out.push(o); return o; };
     if (!food && er) {
       mk({ id: 'n', label: '通常攻撃', name: '通常攻撃', kind: 'normal', coef: ecoef, W });
+      if (wname === 'ベヒーモスキラー') mk({ id: 'ex', label: '追加攻撃', name: '追加攻撃', kind: 'normal', coef: ecoef, W });
       if (set.has(norm('ナイフカウンター'))) mk({ id: 'nc', label: 'ナイフカウンター', name: 'ナイフカウンター', kind: 'normal', coef: ecoef, W, noKami: true });
       if (set.has(norm('カウンターネイル'))) mk({ id: 'cn', label: 'カウンターネイル', name: 'カウンターネイル', kind: 'normal', coef: ecoef, W, noKami: true, pre: 0.5 });
       if (set.has(norm('匠の技'))) mk({ id: 'tk', label: '匠の技', name: '匠の技', kind: 'normal', coef: ecoef, W, noKami: true, post: 30 });
@@ -543,7 +553,7 @@ button{cursor:pointer}
     }
     const lv = +m.lv || 1;
     const atk = Math.round(lv * (16 + tal[1]) * 0.1 * (1 + A.origAtk) + A.origFlat);
-    return { atk, tal };
+    return { atk, tal, origAtk: A.origAtk, origFlat: A.origFlat };
   }
 
   // ---- ダメージ -------------------------------------------------------
@@ -554,9 +564,11 @@ button{cursor:pointer}
     const indep = A.indep * (atkSpec.isUlt ? A.uIndep : 1);
     const monQ = +g.yomogi || 0;
     const hasMon = g.mondokoro;
-    const kami = g.kami ? (atkSpec.isUlt ? (atkSpec.kamiUlt ? ceil((+g.sortie || 0) / 20) : 0) : ceil((+g.sortie || 0) / 10)) : 0;
+    const kRate = g.kamiRate == null ? 1 : Math.max(0, Math.min(1, +g.kamiRate));
+    const mRate = g.mondoRate == null ? 1 : Math.max(0, Math.min(1, +g.mondoRate));
+    const kami = g.kami ? ceil((atkSpec.isUlt ? (atkSpec.kamiUlt ? ceil((+g.sortie || 0) / 20) : 0) : ceil((+g.sortie || 0) / 10)) * kRate) : 0;
     const W = atkSpec.W || 0;
-    const mon = hasMon ? (atkSpec.kind === 'normal' ? 15 * monQ : 0.15 * W * monQ) : 0;
+    const mon = hasMon ? (atkSpec.kind === 'normal' ? 15 * monQ : 0.15 * W * monQ) * mRate : 0;
     const isoVar = A.isoVar * (atkSpec.extraIso || 1) * (proc ? 50 : 1);
     const addVar = 1 + A.addVar;
     const kusa = 0;
@@ -585,7 +597,8 @@ button{cursor:pointer}
     const attacks = buildAttacks(DATA, I, state, di);
     const aggBase = aggregate(DATA, I, state, di, null);
     const st = stats(DATA, I, state, di, aggBase.A);
-    const waki = dealer.yuku && dealer.yuku.name === '脇差・子狐丸';
+    const wakiEnt = aggBase.used.find(u => u.e.name === '脇差・子狐丸');
+    const waki = !!(dealer.yuku && dealer.yuku.name === '脇差・子狐丸') && (!wakiEnt || !!wakiEnt.ov.on);
     const cov = state.coefOv || {};
     const ovc = (id, c0) => { const v = cov[id]; return (v !== undefined && v !== null && v !== '' && isFinite(+v)) ? +v : c0; };
     const rows = attacks.map(a => {
@@ -604,7 +617,7 @@ button{cursor:pointer}
         const p = g.wakiRate == null ? 0.01 : g.wakiRate;
         expect = Math.round((1 - R) * normal + R * ((1 - p) * crit + p * critProc));
       }
-      return { id: a.id, label: a.label, kind: a.kind, normal, crit, expect, critProc, R, M, inactive: !!a.inactive, condNote: a.condNote, coef: a.coef, coef0: a.coef0, W: a.W, add: A.addAtk + (a.isUlt ? A.uAdd : 0), atkUsed: st2.atk, little: !!a.little };
+      return { id: a.id, label: a.label, kind: a.kind, normal, crit, expect, critProc, R, M, inactive: !!a.inactive, condNote: a.condNote, coef: a.coef, coef0: a.coef0, cEff: a.coef * A.coefBuf, iso: A.isoAtk, ind: A.indep, uind: a.isUlt ? A.uIndep : null, av: A.addVar, iv: A.isoVar * (a.extraIso || 1), W: a.W, add: A.addAtk + (a.isUlt ? A.uAdd : 0), atkUsed: st2.atk, little: !!a.little };
     });
     // 壁役おじさん(魔王妹のみ)
     if (dealer.char === '魔王妹' && state.ojisan && learnedSet(DATA, dealer).set.has(norm('壁役おじさん召喚'))) {
@@ -627,14 +640,14 @@ button{cursor:pointer}
           const stx = { atk: a.atkv != null ? a.atkv : atkv, tal: [0, 0, 0, 0] };
           const R = Math.min(1, Math.max(0, A.critRate + (a.isUlt ? A.uCritRate : 0)));
           const M = Math.max(0, A.critMult + (a.isUlt ? A.uCritMult : 0));
-          rows.push({ id: 'oji' + nm + a.label, label: '壁役おじさん（' + nm + '）' + a.label, kind: a.kind, normal: damage(a, A, stx, g2, 1, false), crit: damage(a, A, stx, g2, 1 + M, false), expect: damage(a, A, stx, g2, 1 + R * M, false), critProc: null, R, M, inactive: false, coef: a.coef, coef0: a.coef0, W: a.W, add: A.addAtk + (a.isUlt ? A.uAdd : 0), atkUsed: stx.atk, little: true });
+          rows.push({ id: 'oji' + nm + a.label, label: '壁役おじさん（' + nm + '）' + a.label, kind: a.kind, normal: damage(a, A, stx, g2, 1, false), crit: damage(a, A, stx, g2, 1 + M, false), expect: damage(a, A, stx, g2, 1 + R * M, false), critProc: null, R, M, inactive: false, coef: a.coef, coef0: a.coef0, cEff: a.coef * A.coefBuf, iso: A.isoAtk, ind: A.indep, uind: a.isUlt ? A.uIndep : null, av: A.addVar, iv: A.isoVar * (a.extraIso || 1), W: a.W, add: A.addAtk + (a.isUlt ? A.uAdd : 0), atkUsed: stx.atk, little: true });
         }
       }
     }
-    return { rows, stats: st, used: aggBase.used, attacks };
+    return { rows, stats: st, used: aggBase.used, attacks, waki };
   }
 
-  const api = { norm, build, evaluate, targetOK, collect, entryDefaults, getOv, aggregate, starOf, learnedSet, weaponType, pickEquip, applicableByScope, ROMAN, buildAttacks, stats, isWM, hasSpecial };
+  const api = { CH, MULT, norm, build, evaluate, targetOK, collect, entryDefaults, getOv, aggregate, starOf, learnedSet, weaponType, pickEquip, applicableByScope, ROMAN, buildAttacks, stats, isWM, hasSpecial };
   if (typeof module !== 'undefined') module.exports = api; else root.Engine = api;
 })(typeof window !== 'undefined' ? window : globalThis);
 </script>
@@ -646,6 +659,8 @@ button{cursor:pointer}
   const KEY = 'yukuiku-calc-v3';
   const $ = s => document.querySelector(s);
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const mp = x => '×' + Math.round(x * 1000) / 10 + '%';
+  const pc = x => (x >= 0 ? '+' : '') + Math.round(x * 1000) / 10 + '%';
   const fmt = n => n == null ? '' : Math.round(n).toLocaleString('ja-JP');
 
   // ---------- 派生データ ----------
@@ -776,13 +791,14 @@ button{cursor:pointer}
   let saves = [], saveSeq = 0;
   function initState() {
     const keepAchv = state && state.global && state.global.achv != null ? state.global.achv : 0.1;
-    state = { party: [emptyMember()], others: { ults: [], skills: {}, spear: false, wing: false, general: false, glory: false, herd: true, herdN: 4, flags: {} }, ojisan: {}, manual: {}, coefOv: {}, ov: {}, global: { achv: keepAchv, sortie: 10000, yomogi: 300, wakiRate: 0.01 } };
+    state = { party: [emptyMember()], others: { ults: [], skills: {}, spear: false, wing: false, general: false, glory: false, herd: true, herdN: 4, flags: {} }, ojisan: {}, manual: {}, manualT: {}, coefOv: {}, ov: {}, global: { achv: keepAchv, sortie: 10000, yomogi: 300, wakiRate: 0.01 } };
   }
   try { const s = localStorage.getItem(KEY); state = s ? JSON.parse(s) : null; } catch (e) { state = null; }
   if (!state || !state.party || state.party.length !== 1 || !state.others) initState();
   if (!state.ojisan) state.ojisan = {};
   if (!state.manual) state.manual = {};
   if (!state.coefOv) state.coefOv = {};
+  if (!state.manualT) state.manualT = {};
   if (!state.others.flags) state.others.flags = {};
   let lowOpen = false;
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { } };
@@ -875,7 +891,7 @@ button{cursor:pointer}
     const e = info.e; const parts = [];
     if (e.src === 'ult') { const ub = e.ub; const r = ub.byStar ? ub.ranks['星' + E.starOf(DATA, state.party[0])] : ub.ranks[e.rk]; if (r) parts.push(`攻撃+${r.addAtk || 0}%` + (r.critRate ? ` クリ率+${r.critRate}% クリ倍+${r.critMult || 0}%` : '')); }
     else if (e.src === 'special') { const s = e.spec; if (s.byStar) parts.push('元ステ(星別)'); if (s.orig) parts.push(`元攻撃力+${s.orig}%`); if (s.addAtk) parts.push(`攻撃加算+${s.addAtk}%`); if (s.critRate) parts.push(`クリ率+${s.critRate}%`); if (s.critMult) parts.push(`クリ倍+${s.critMult}%`); if (s.perCount) parts.push('1回あたり ' + Object.entries(s.perCount).map(([k, v]) => `${CHNAME[k] || k}+${v}%`).join(' ')); if (s.flag) parts.push('強化フラグ'); }
-    else for (const [col, v] of Object.entries(e.raw.e)) { if (v.raw) parts.push(`${col.replace('(%)', '')} ${v.raw}`); else if (v.v != null) parts.push(`${col.replace('(%)', '')} ${v.v}%`); }
+    else for (const [col, v] of Object.entries(e.raw.e)) { if (v.raw) parts.push(`${col.replace('(%)', '')} ${v.raw}`); else if (v.v != null) parts.push(`${col.replace('(%)', '')} ${v.v}${col.includes('(±)') ? '' : '%'}`); }
     return parts.join(' / ');
   }
   function xRange(e) {
@@ -900,9 +916,8 @@ button{cursor:pointer}
     let h = '';
     const g0 = state.global, dl = state.party[0];
     const ex = [];
-    if (dl.weapon === 'かみさまのナイフ') ex.push(`<tr><td></td><td class="nm">かみさまのナイフ<div class="note">出撃回数÷10を通常攻撃に加算（必殺技は蒼の奇蹟/例の紐のとき÷20）</div></td><td><label class="mini">出撃回数<input type="number" min="0" value="${g0.sortie}" data-a="g" data-f="sortie"></label></td></tr>`);
-    if (dl.yuku && dl.yuku.name === 'もんどころ') ex.push(`<tr><td></td><td class="nm">もんどころ<div class="note">ヨモギ化発動回数に応じて威力が上がる</div></td><td><label class="mini">ヨモギ化発動回数<input type="number" min="0" max="300" value="${g0.yomogi}" data-a="g" data-f="yomogi"></label></td></tr>`);
-    if (dl.yuku && dl.yuku.name === '脇差・子狐丸') ex.push(`<tr><td></td><td class="nm">脇差・子狐丸<div class="note">クリティカル時に一定確率で孤立可変×50</div></td><td><label class="mini">プロック率(%)<input type="number" min="0" max="100" step="0.1" value="${Math.round(g0.wakiRate * 10000) / 100}" data-a="g" data-f="wakiRate"></label></td></tr>`);
+    if (dl.weapon === 'かみさまのナイフ') ex.push(`<tr class="${g0.kamiOn === false ? 'off' : ''}"><td><input type="checkbox" data-a="gon" data-f="kamiOn"${g0.kamiOn === false ? '' : ' checked'}></td><td class="nm">かみさまのナイフ<div class="note">出撃回数÷10を通常攻撃に加算（必殺技は蒼の奇蹟/例の紐のとき÷20）</div></td><td><label class="mini">出撃回数<input type="number" min="0" value="${g0.sortie}" data-a="g" data-f="sortie"></label> <label class="mini">発動具合（0〜1）<input type="number" step="0.1" min="0" max="1" value="${g0.kamiRate == null ? 1 : g0.kamiRate}" data-a="g" data-f="kamiRate"></label></td></tr>`);
+    if (dl.yuku && dl.yuku.name === 'もんどころ') ex.push(`<tr class="${g0.mondoOn === false ? 'off' : ''}"><td><input type="checkbox" data-a="gon" data-f="mondoOn"${g0.mondoOn === false ? '' : ' checked'}></td><td class="nm">もんどころ<div class="note">ヨモギ化発動回数に応じて威力が上がる</div></td><td><label class="mini">ヨモギ化発動回数<input type="number" min="0" max="300" value="${g0.yomogi}" data-a="g" data-f="yomogi"></label> <label class="mini">発動具合（0〜1）<input type="number" step="0.1" min="0" max="1" value="${g0.mondoRate == null ? 1 : g0.mondoRate}" data-a="g" data-f="mondoRate"></label></td></tr>`);
     if (ex.length) h += '<table class="buf"><tbody>' + ex.join('') + '</tbody></table>';
     if (topRows.length) {
       h += '<table class="buf"><tbody>';
@@ -925,6 +940,7 @@ button{cursor:pointer}
         h += `<tr class="${u.active ? '' : 'off'}${u.dup ? ' dup' : ''}"><td><input type="checkbox" data-a="ov" data-k="${k}" data-f="on"${ov.on ? ' checked' : ''}></td>
           <td class="nm">${esc(e.label)}<div class="eff">${esc(effText(u))}</div>${e.note ? `<div class="note">${esc(String(e.note).replace(/※&size\(9\)\{\d\}/g, ''))}</div>` : ''}${own && dis ? '<div class="note warn">自分には効果がありません</div>' : ''}${u.dup ? '<div class="note warn">同じ必殺技・同ランクは重複しません</div>' : ''}</td>
           <td><label class="mini">発動具合（0〜1）<input type="number" step="0.1" min="0" max="1" value="${ov.rate}" data-a="ov" data-k="${k}" data-f="rate"></label>
+          ${e.name === '脇差・子狐丸' ? `<div><label class="mini">プロック率(%)<input type="number" min="0" max="100" step="0.1" value="${Math.round(state.global.wakiRate * 10000) / 100}" data-a="g" data-f="wakiRate"></label></div>` : ''}
           ${needsX(e) && !(e.spec && e.spec.perCount && !own) ? `<label class="mini">${esc((e.spec && e.spec.count) || 'x')}<input type="number" step="any" ${xRange(e)} value="${ov.x == null ? 0 : ov.x}" data-a="ov" data-k="${k}" data-f="x"></label>` : ''}
           ${hasRange(e) ? `<label class="mini">段<select data-a="ov" data-k="${k}" data-f="variant">${opt(0, '上段', !ov.variant)}${opt(1, '下段', ov.variant == 1)}</select></label>` : ''}</td></tr>`;
       }
@@ -952,11 +968,28 @@ button{cursor:pointer}
     let h = '<section><h2>任意バフ <button class="btn sm" data-a="reset" data-w="manual">リセット</button></h2><p class="muted">入力した値を、すべての与ダメージにバフとして上乗せします（マイナスは減算）。「×」の項目は、入力した%分を上乗せして掛け算します（例: 20 → ×1.2）。</p><div class="grid">';
     for (const [ch, label, sign, unit, mult] of MAN) {
       let cur = '';
-      if (base) { const v = base[ch]; cur = mult ? '×' + v.toFixed(2) : (ch === 'origFlat' ? (v >= 0 ? '+' : '') + Math.round(v * 100) / 100 : (v >= 0 ? '+' : '') + Math.round(v * 1000) / 10 + '%'); }
+      if (base) { const v = base[ch]; cur = mult ? mp(v) : (ch === 'origFlat' ? (v >= 0 ? '+' : '') + Math.round(v * 100) / 100 : (v >= 0 ? '+' : '') + Math.round(v * 1000) / 10 + '%'); }
       const mv = state.manual[ch];
-      h += `<label><span>${label} <span class="curv">（現状 ${cur}）</span></span><span class="mrow">${sign}<input type="number" step="any" value="${mv ? mv : ''}" placeholder="0" data-a="man" data-f="${ch}">${unit}</span></label>`;
+      h += `<label><span>${label} <span class="curv">（現状 ${cur}）</span></span><span class="mrow">${mult ? '×(100%+' : sign}<input type="number" step="any" value="${mv ? mv : ''}" placeholder="0" data-a="man" data-f="${ch}">${mult ? '%)' : unit}</span></label>`;
     }
     h += '</div>';
+    const tg = {};
+    for (const u of (res ? res.used : [])) {
+      const e = u.e; if (!u.active || u.dup || !e.restrict || !e.restrict.only || !e.raw) continue;
+      for (const col of Object.keys(e.raw.e)) { const ch = E.CH[col]; if (!ch || !MAN.some(m => m[0] === ch)) continue; for (const o of e.restrict.only) { if (res.attacks.some(a => norm(a.name).includes(norm(o.name)))) tg[o.name + '|' + ch] = { t: o.name, ch }; } }
+    }
+    const tgl = Object.values(tg);
+    if (tgl.length) {
+      h += '<h4>特定の攻撃のみ有効なバフ</h4><p class="muted">武器・ゆくせさりなどの効果で、特定の攻撃にだけ掛かるバフがあるときに表示されます。入力した値は、その攻撃のみに上乗せします。</p><div class="grid">';
+      for (const { t, ch } of tgl) {
+        const [, label, sign, unit, mult] = MAN.find(m => m[0] === ch);
+        const atkObj = res.attacks.find(a => norm(a.name).includes(norm(t)));
+        let cur = ''; try { const v = E.aggregate(DATA, I, Object.assign({}, evState(), { manual: null, manualT: null }), 0, atkObj).A[ch]; cur = mult ? mp(v) : (ch === 'origFlat' ? (v >= 0 ? '+' : '') + Math.round(v * 100) / 100 : (v >= 0 ? '+' : '') + Math.round(v * 1000) / 10 + '%'); } catch (err) { }
+        const mv = (state.manualT[t] || {})[ch];
+        h += `<label><span>${label}【${esc(t)}のみ】 <span class="curv">（現状 ${cur}）</span></span><span class="mrow">${mult ? '×(100%+' : sign}<input type="number" step="any" value="${mv ? mv : ''}" placeholder="0" data-a="mant" data-t="${esc(t)}" data-f="${ch}">${mult ? '%)' : unit}</span></label>`;
+      }
+      h += '</div>';
+    }
     h += '<h4>攻撃の係数 <button class="btn sm" data-a="reset" data-w="coefov">リセット</button></h4><p class="muted">与ダメージ欄の各攻撃の固有係数（装備・スキル・必殺技の係数）を、入力した値に置き換えます。空欄なら現状の係数のままです。「係数バフ」とは別枠です。</p><div class="grid">';
     const ids = new Set();
     for (const r of (res ? res.rows : [])) {
@@ -979,13 +1012,13 @@ button{cursor:pointer}
       let t = e.label;
       if (e.name === '群れとしての強さ') t += '（' + state.others.herdN + '）';
       else if (needsX(e) && !(e.spec && e.spec.perCount && e.owner > 0) && u.ov.x != null) t += '（' + (Math.round(u.ov.x * 100) / 100) + '）';
+      if (e.name === '脇差・子狐丸') t += '（プロック率' + Math.round(state.global.wakiRate * 10000) / 100 + '%）';
       if (u.ov.rate != null && +u.ov.rate !== 1) t += '（' + u.ov.rate + '）';
       if (!seen.has(t)) { seen.add(t); names.push(t); }
     }
     const dl = state.party[0], g0 = state.global;
-    if (dl.weapon === 'かみさまのナイフ') names.push('かみさまのナイフ（出撃回数' + g0.sortie + '）');
-    if (dl.yuku && dl.yuku.name === 'もんどころ') names.push('もんどころ（ヨモギ化' + g0.yomogi + '回）');
-    if (dl.yuku && dl.yuku.name === '脇差・子狐丸') names.push('脇差・子狐丸（プロック率' + Math.round(g0.wakiRate * 10000) / 100 + '%）');
+    if (dl.weapon === 'かみさまのナイフ' && g0.kamiOn !== false) names.push('かみさまのナイフ（出撃回数' + g0.sortie + '）' + (g0.kamiRate != null && +g0.kamiRate !== 1 ? '（' + g0.kamiRate + '）' : ''));
+    if (dl.yuku && dl.yuku.name === 'もんどころ' && g0.mondoOn !== false) names.push('もんどころ（ヨモギ化' + g0.yomogi + '回）' + (g0.mondoRate != null && +g0.mondoRate !== 1 ? '（' + g0.mondoRate + '）' : ''));
     return names;
   }
   function imgInfo(res) {
@@ -1120,11 +1153,16 @@ button{cursor:pointer}
   }
   document.addEventListener('mousedown', ev => { if (pop && !pop.contains(ev.target) && !(ev.target.classList && ev.target.classList.contains('cb'))) closePop(); });
 
+  // ヨモギブースターともんどころは「ヨモギ化発動回数」を共有する
+  function boosterKey() {
+    try { const e = E.collect(DATA, I, evState(), 0).find(x => String(x.name).includes('ヨモギブースター')); return e ? e.key : null; } catch (err) { return null; }
+  }
   function render() {
+    { const bk = boosterKey(); if (bk) { state.ov[bk] = state.ov[bk] || {}; state.ov[bk].x = state.global.yomogi; } }
     const dealer = state.party[0];
     const g = state.global;
-    g.kami = !!(dealer.weapon === 'かみさまのナイフ');
-    g.mondokoro = !!(dealer.yuku && dealer.yuku.name === 'もんどころ');
+    g.kami = !!(dealer.weapon === 'かみさまのナイフ') && g.kamiOn !== false;
+    g.mondokoro = !!(dealer.yuku && dealer.yuku.name === 'もんどころ') && g.mondoOn !== false;
     let res = null;
     if (dealer.char) try { res = E.evaluate(DATA, I, evState(), 0); } catch (err) { console.error(err); }
     let h = '', bh = '';
@@ -1133,10 +1171,10 @@ button{cursor:pointer}
     const L0 = h; h = '<section><h2>与ダメージ</h2>';
     if (!res) h += '<p class="muted">' + (dealer.char ? '計算できませんでした。' : 'ダメージを出すキャラを選択してください。') + '</p>';
     else {
-      const waki = dealer.yuku && dealer.yuku.name === '脇差・子狐丸';
-      h += `<p><b>${esc(dealer.char)}</b>　攻撃力 <b>${fmt(res.stats.atk)}</b>${E.isWM(dealer) ? '　<span class="tag">ウェポンマスター: 武器攻撃力118</span>' : ''}</p>
+      const waki = !!res.waki;
+      h += `<p><b>${esc(dealer.char)}</b>　攻撃力 <b>${fmt(res.stats.atk)}</b>${E.isWM(dealer) ? '　<span class="tag">ウェポンマスター: 武器攻撃力118</span>' : ''}<br><span class="note">攻撃力バフ ${pc(res.stats.origAtk)} / 定数バフ ${res.stats.origFlat >= 0 ? '+' : ''}${Math.round(res.stats.origFlat * 100) / 100}</span></p>
         <div class="tw"><table class="res"><thead><tr><th>攻撃</th><th>通常</th><th>クリティカル</th><th>期待値</th>${waki ? '<th>子狐丸クリ</th>' : ''}</tr></thead><tbody>` +
-        res.rows.map(r => `<tr class="${r.inactive ? 'off' : ''}"><td><label class="chk"><input type="checkbox" data-a="rowsel" data-id="${esc(r.id)}"${unchecked.has(r.id) ? '' : ' checked'}> ${esc(r.label)}</label>${r.inactive ? `<div class="note">条件未成立: ${esc(r.condNote)}</div>` : ''}<div class="note">${r.little ? '攻撃力' + fmt(r.atkUsed) + ' / ' : ''}係数${r.coef} / 加算バフ+${Math.round(r.add * 1000) / 10}% / クリ率${(r.R * 100).toFixed(1)}% 倍率+${(r.M * 100).toFixed(0)}%</div></td><td>${fmt(r.normal)}</td><td>${fmt(r.crit)}</td><td>${fmt(r.expect)}</td>${waki ? `<td>${fmt(r.critProc)}</td>` : ''}</tr>`).join('') + '</tbody></table></div>';
+        res.rows.map(r => `<tr class="${r.inactive ? 'off' : ''}"><td><label class="chk"><input type="checkbox" data-a="rowsel" data-id="${esc(r.id)}"${unchecked.has(r.id) ? '' : ' checked'}> ${esc(r.label)}</label>${r.inactive ? `<div class="note">条件未成立: ${esc(r.condNote)}</div>` : ''}<div class="note">${r.little ? '攻撃力' + fmt(r.atkUsed) + ' / ' : ''}係数${Math.round(r.cEff * 10000) / 10000} / 加算${pc(r.add)} / 孤立${mp(r.iso)} / 独立${mp(r.ind)}${r.uind != null ? ' / 必殺独立' + mp(r.uind) : ''} / 加算可変${pc(r.av)} / 孤立可変${mp(r.iv)} / クリ率${(r.R * 100).toFixed(1)}% 倍率+${(r.M * 100).toFixed(0)}%</div></td><td>${fmt(r.normal)}</td><td>${fmt(r.crit)}</td><td>${fmt(r.expect)}</td>${waki ? `<td>${fmt(r.critProc)}</td>` : ''}</tr>`).join('') + '</tbody></table></div>';
       h += '<p><button data-a="savedmg" class="btn">この与ダメージを保存</button> <button data-a="imgnow" class="btn">画像にする</button></p>';
       if (!res.rows.length) h += '<p class="muted">計算できる攻撃がありません（武器・必殺技・スキルを選んでください）。</p>';
       bh = '<section><h2>適用中のバフ</h2><p class="muted">チェックで有効/無効、発動具合(0〜1)を変更できます。条件つきのスキル（逆境・HP条件・同族嫌悪など）はここで調整してください。</p>' + buffPanel(res) + '</section>';
@@ -1194,6 +1232,7 @@ button{cursor:pointer}
       case 'ultrank': if (m.ult) m.ult.rank = val; break;
       case 'rowsel': if (val) unchecked.delete(t.dataset.id); else unchecked.add(t.dataset.id); break;
       case 'coefov': if (val === '' || !isFinite(+val)) delete state.coefOv[t.dataset.id]; else state.coefOv[t.dataset.id] = +val; break;
+      case 'mant': { const tt = t.dataset.t, ff = t.dataset.f; state.manualT[tt] = state.manualT[tt] || {}; if (val === '' || !+val) delete state.manualT[tt][ff]; else state.manualT[tt][ff] = +val; break; }
       case 'man': state.manual[t.dataset.f] = val === '' ? 0 : +val; break;
       case 'ofl': o.flags[t.dataset.f] = !!val; break;
       case 'ojisan': state.ojisan[t.dataset.n] = !!val; break;
@@ -1213,9 +1252,11 @@ button{cursor:pointer}
       }
       case 'oflag': o[t.dataset.f] = !!val; break;
       case 'oherdn': o.herdN = Math.max(1, Math.min(8, +val || 1)); break;
+      case 'gon': state.global[t.dataset.f] = !!val; break;
       case 'g': { const f = t.dataset.f; state.global[f] = (f === 'achv' || f === 'wakiRate') ? (+val) / 100 : +val; break; }
       case 'ov': {
         const k = t.dataset.k; const f = t.dataset.f; state.ov[k] = state.ov[k] || {};
+        if (f === 'x' && k === boosterKey()) state.global.yomogi = +val;
         state.ov[k][f] = f === 'on' ? !!val : (f === 'scope' ? val : +val); break;
       }
     }
@@ -1227,7 +1268,7 @@ button{cursor:pointer}
     const t = ev.target.closest('button[data-a]'); if (!t) return; const a = t.dataset.a;
     if (a === 'savedmg') {
       let res; try { res = E.evaluate(DATA, I, evState(), 0); } catch (e) { return; }
-      saveSeq++; saves.push({ id: saveSeq, name: 'データ' + saveSeq, rows: res.rows.filter(r => !r.inactive && !unchecked.has(r.id)).map(r => ({ label: r.label, normal: r.normal, crit: r.crit, expect: r.expect, critProc: state.party[0].yuku && state.party[0].yuku.name === '脇差・子狐丸' ? r.critProc : null })), info: imgInfo(res), waki: !!(state.party[0].yuku && state.party[0].yuku.name === '脇差・子狐丸'), snap: clone({ party: state.party, others: state.others, ov: state.ov, global: state.global, manual: state.manual, coefOv: state.coefOv, ojisan: state.ojisan }) });
+      saveSeq++; saves.push({ id: saveSeq, name: 'データ' + saveSeq, rows: res.rows.filter(r => !r.inactive && !unchecked.has(r.id)).map(r => ({ label: r.label, normal: r.normal, crit: r.crit, expect: r.expect, critProc: res.waki ? r.critProc : null })), info: imgInfo(res), waki: !!res.waki, snap: clone({ party: state.party, others: state.others, ov: state.ov, global: state.global, manual: state.manual, manualT: state.manualT, coefOv: state.coefOv, ojisan: state.ojisan }) });
       render();
     } else if (a === 'reset') {
       if (!confirm('リセットしますか？')) return;
@@ -1243,14 +1284,14 @@ button{cursor:pointer}
       else if (w === 'olow') { for (const n of ['嫌われ者', 'すばらしいこの世界への祝福', 'エレキフィールド', '剣帝陣', '同調圧力']) delete o.skills[n]; o.general = false; o.spear = false; o.flags = {}; }
       else if (w === 'oyuku') dflt();
       else if (w === 'oflags') o.flags = {};
-      else if (w === 'manual') state.manual = {};
+      else if (w === 'manual') { state.manual = {}; state.manualT = {}; }
       else if (w === 'coefov') state.coefOv = {};
       render();
     } else if (a === 'del') { saves = saves.filter(x => x.id !== +t.dataset.id); render(); }
     else if (a === 'delall') { saves = []; render(); }
-    else if (a === 'restore') { const s = saves.find(x => x.id === +t.dataset.id); if (s) { const c = clone(s.snap); state.party = c.party; state.others = c.others; state.ov = c.ov; state.global = c.global; state.manual = c.manual || {}; state.coefOv = c.coefOv || {}; state.ojisan = c.ojisan || {}; render(); } }
+    else if (a === 'restore') { const s = saves.find(x => x.id === +t.dataset.id); if (s) { const c = clone(s.snap); state.party = c.party; state.others = c.others; state.ov = c.ov; state.global = c.global; state.manual = c.manual || {}; state.manualT = c.manualT || {}; state.coefOv = c.coefOv || {}; state.ojisan = c.ojisan || {}; render(); } }
     else if (a === 'imgsave') { const s = saves.find(x => x.id === +t.dataset.id); if (s) showImage(makeImage(s.name, s.info, s.rows, s.waki), 'yukuiku-' + s.name + '.png'); }
-    else if (a === 'imgnow') { let res; try { res = E.evaluate(DATA, I, evState(), 0); } catch (e) { return; } const w = !!(state.party[0].yuku && state.party[0].yuku.name === '脇差・子狐丸'); showImage(makeImage('与ダメージ', imgInfo(res), res.rows.filter(r => !r.inactive && !unchecked.has(r.id)), w), 'yukuiku-damage.png'); }
+    else if (a === 'imgnow') { let res; try { res = E.evaluate(DATA, I, evState(), 0); } catch (e) { return; } const w = !!res.waki; showImage(makeImage('与ダメージ', imgInfo(res), res.rows.filter(r => !r.inactive && !unchecked.has(r.id)), w), 'yukuiku-damage.png'); }
   });
   $('#reset').addEventListener('click', () => { if (confirm('入力内容を初期化しますか？')) { initState(); render(); } });
   render();
