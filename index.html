@@ -791,7 +791,8 @@ button{cursor:pointer}
   let saves = [], saveSeq = 0;
   function initState() {
     const keepAchv = state && state.global && state.global.achv != null ? state.global.achv : 0.1;
-    state = { party: [emptyMember()], others: { ults: [], skills: {}, spear: false, wing: false, general: false, glory: false, herd: true, herdN: 4, flags: {} }, ojisan: {}, manual: {}, manualT: {}, coefOv: {}, ov: {}, global: { achv: keepAchv, sortie: 10000, yomogi: 300, wakiRate: 0.01 } };
+    const keepAB = !!(state && state.alwaysBuf);
+    state = { alwaysBuf: keepAB, party: [emptyMember()], others: { ults: [], skills: {}, spear: false, wing: false, general: false, glory: false, herd: false, herdN: 4, flags: {} }, ojisan: {}, manual: {}, manualT: {}, coefOv: {}, ov: {}, global: { achv: keepAchv, sortie: 10000, yomogi: 300, wakiRate: 0.01 } };
   }
   try { const s = localStorage.getItem(KEY); state = s ? JSON.parse(s) : null; } catch (e) { state = null; }
   if (!state || !state.party || state.party.length !== 1 || !state.others) initState();
@@ -800,7 +801,7 @@ button{cursor:pointer}
   if (!state.coefOv) state.coefOv = {};
   if (!state.manualT) state.manualT = {};
   if (!state.others.flags) state.others.flags = {};
-  let lowOpen = false;
+  let lowOpen = false, bufOpen = false;
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { } };
   const clone = o => JSON.parse(JSON.stringify(o));
 
@@ -1168,13 +1169,15 @@ button{cursor:pointer}
     let h = '', bh = '';
     h += `<section><h2>ダメージを出すキャラ <button class="btn sm" data-a="reset" data-w="dealer">リセット</button></h2>` + dealerCard(dealer) + '</section>';
     h += `<section><h2>他者から受けるバフ <button class="btn sm" data-a="reset" data-w="oall">リセット</button></h2>` + othersPanel(dealer) + '</section>';
-    const L0 = h; h = '<section><h2>与ダメージ</h2>';
+    const L0 = h; h = '<section><h2>与ダメージ <label class="chk" style="display:inline-flex;font-size:12px;font-weight:normal;margin-left:10px"><input type="checkbox" data-a="alwaysbuf"' + (state.alwaysBuf ? ' checked' : '') + '> 常にバフを表示</label></h2>';
     if (!res) h += '<p class="muted">' + (dealer.char ? '計算できませんでした。' : 'ダメージを出すキャラを選択してください。') + '</p>';
     else {
       const waki = !!res.waki;
-      h += `<p><b>${esc(dealer.char)}</b>　攻撃力 <b>${fmt(res.stats.atk)}</b>${E.isWM(dealer) ? '　<span class="tag">ウェポンマスター: 武器攻撃力118</span>' : ''}<br><span class="note">攻撃力バフ ${pc(res.stats.origAtk)} / 定数バフ ${res.stats.origFlat >= 0 ? '+' : ''}${Math.round(res.stats.origFlat * 100) / 100}</span></p>
+      const showB = !!state.alwaysBuf || bufOpen;
+      h += `<p><b>${esc(dealer.char)}</b>　攻撃力 <b>${fmt(res.stats.atk)}</b>${E.isWM(dealer) ? '　<span class="tag">ウェポンマスター: 武器攻撃力118</span>' : ''}${showB ? `<br><span class="note">攻撃力バフ ${pc(res.stats.origAtk)} / 定数バフ ${res.stats.origFlat >= 0 ? '+' : ''}${Math.round(res.stats.origFlat * 100) / 100}</span>` : ''}</p>
+        ${state.alwaysBuf ? '' : `<p style="margin:4px 0"><button class="btn sm" data-a="tgbuf" style="margin:0">${bufOpen ? '▾ バフを隠す' : '▸ バフを表示'}</button></p>`}
         <div class="tw"><table class="res"><thead><tr><th>攻撃</th><th>通常</th><th>クリティカル</th><th>期待値</th>${waki ? '<th>子狐丸クリ</th>' : ''}</tr></thead><tbody>` +
-        res.rows.map(r => `<tr class="${r.inactive ? 'off' : ''}"><td><label class="chk"><input type="checkbox" data-a="rowsel" data-id="${esc(r.id)}"${unchecked.has(r.id) ? '' : ' checked'}> ${esc(r.label)}</label>${r.inactive ? `<div class="note">条件未成立: ${esc(r.condNote)}</div>` : ''}<div class="note">${r.little ? '攻撃力' + fmt(r.atkUsed) + ' / ' : ''}係数${Math.round(r.cEff * 10000) / 10000} / 加算${pc(r.add)} / 孤立${mp(r.iso)} / 独立${mp(r.ind)}${r.uind != null ? ' / 必殺独立' + mp(r.uind) : ''} / 加算可変${pc(r.av)} / 孤立可変${mp(r.iv)} / クリ率${(r.R * 100).toFixed(1)}% 倍率+${(r.M * 100).toFixed(0)}%</div></td><td>${fmt(r.normal)}</td><td>${fmt(r.crit)}</td><td>${fmt(r.expect)}</td>${waki ? `<td>${fmt(r.critProc)}</td>` : ''}</tr>`).join('') + '</tbody></table></div>';
+        res.rows.map(r => `<tr class="${r.inactive ? 'off' : ''}"><td><label class="chk"><input type="checkbox" data-a="rowsel" data-id="${esc(r.id)}"${unchecked.has(r.id) ? '' : ' checked'}> ${esc(r.label)}</label>${r.inactive ? `<div class="note">条件未成立: ${esc(r.condNote)}</div>` : ''}${showB ? `<div class="note">${r.little ? '攻撃力' + fmt(r.atkUsed) + ' / ' : ''}係数${Math.round(r.cEff * 10000) / 10000} / 加算${pc(r.add)} / 孤立${mp(r.iso)} / 独立${mp(r.ind)}${r.uind != null ? ' / 必殺独立' + mp(r.uind) : ''} / 加算可変${pc(r.av)} / 孤立可変${mp(r.iv)} / クリ率${(r.R * 100).toFixed(1)}% 倍率+${(r.M * 100).toFixed(0)}%</div>` : ''}</td><td>${fmt(r.normal)}</td><td>${fmt(r.crit)}</td><td>${fmt(r.expect)}</td>${waki ? `<td>${fmt(r.critProc)}</td>` : ''}</tr>`).join('') + '</tbody></table></div>';
       h += '<p><button data-a="savedmg" class="btn">この与ダメージを保存</button> <button data-a="imgnow" class="btn">画像にする</button></p>';
       if (!res.rows.length) h += '<p class="muted">計算できる攻撃がありません（武器・必殺技・スキルを選んでください）。</p>';
       bh = '<section><h2>適用中のバフ</h2><p class="muted">チェックで有効/無効、発動具合(0〜1)を変更できます。条件つきのスキル（逆境・HP条件・同族嫌悪など）はここで調整してください。</p>' + buffPanel(res) + '</section>';
@@ -1252,6 +1255,7 @@ button{cursor:pointer}
       }
       case 'oflag': o[t.dataset.f] = !!val; break;
       case 'oherdn': o.herdN = Math.max(1, Math.min(8, +val || 1)); break;
+      case 'alwaysbuf': state.alwaysBuf = !!val; break;
       case 'gon': state.global[t.dataset.f] = !!val; break;
       case 'g': { const f = t.dataset.f; state.global[f] = (f === 'achv' || f === 'wakiRate') ? (+val) / 100 : +val; break; }
       case 'ov': {
@@ -1266,6 +1270,7 @@ button{cursor:pointer}
   document.addEventListener('toggle', ev => { const d = ev.target; if (d.dataset && d.dataset.low) lowOpen = d.open; }, true);
   document.addEventListener('click', ev => {
     const t = ev.target.closest('button[data-a]'); if (!t) return; const a = t.dataset.a;
+    if (a === 'tgbuf') { bufOpen = !bufOpen; render(); return; }
     if (a === 'savedmg') {
       let res; try { res = E.evaluate(DATA, I, evState(), 0); } catch (e) { return; }
       saveSeq++; saves.push({ id: saveSeq, name: 'データ' + saveSeq, rows: res.rows.filter(r => !r.inactive && !unchecked.has(r.id)).map(r => ({ label: r.label, normal: r.normal, crit: r.crit, expect: r.expect, critProc: res.waki ? r.critProc : null })), info: imgInfo(res), waki: !!res.waki, snap: clone({ party: state.party, others: state.others, ov: state.ov, global: state.global, manual: state.manual, manualT: state.manualT, coefOv: state.coefOv, ojisan: state.ojisan }) });
@@ -1274,13 +1279,13 @@ button{cursor:pointer}
       if (!confirm('リセットしますか？')) return;
       const w = t.dataset.w, m = state.party[0], o = state.others;
       const dropOv = f => { state.ov = Object.fromEntries(Object.entries(state.ov).filter(([k]) => !f(k))); };
-      const dflt = () => { o.spear = false; o.wing = false; o.general = false; o.glory = false; o.herd = true; o.herdN = 4; };
+      const dflt = () => { o.spear = false; o.wing = false; o.general = false; o.glory = false; o.herd = false; o.herdN = 4; };
       if (w === 'dealer') { state.party[0] = emptyMember(); state.ojisan = {}; dropOv(k => k.startsWith('0|')); }
       else if (w === 'dskill') { m.skills = {}; if (m.char && !weaponOptions(m).some(e => e.name === m.weapon)) m.weapon = defaultWeapon(m); }
       else if (w === 'dspec') { m.special = {}; m.glory = false; }
       else if (w === 'oall') { o.ults = []; o.skills = {}; o.flags = {}; dflt(); dropOv(k => !k.startsWith('0|')); }
       else if (w === 'oult') o.ults = [];
-      else if (w === 'oskill') { for (const n of ['鼓舞', 'カリスマ', 'アタックフィールド', 'クリティカルフィールド', 'みんな違ってみんないい', 'デバフ要員']) delete o.skills[n]; o.wing = false; o.glory = false; o.herd = true; o.herdN = 4; }
+      else if (w === 'oskill') { for (const n of ['鼓舞', 'カリスマ', 'アタックフィールド', 'クリティカルフィールド', 'みんな違ってみんないい', 'デバフ要員']) delete o.skills[n]; o.wing = false; o.glory = false; o.herd = false; o.herdN = 4; }
       else if (w === 'olow') { for (const n of ['嫌われ者', 'すばらしいこの世界への祝福', 'エレキフィールド', '剣帝陣', '同調圧力']) delete o.skills[n]; o.general = false; o.spear = false; o.flags = {}; }
       else if (w === 'oyuku') dflt();
       else if (w === 'oflags') o.flags = {};
