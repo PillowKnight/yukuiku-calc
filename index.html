@@ -91,6 +91,8 @@ footer a{color:var(--acc);text-decoration:none}footer a:hover{text-decoration:un
 <main id="app"></main>
 <main id="hist" hidden>
 <h1 style="font-size:20px;margin:6px 0">アップデート履歴</h1>
+<h2>2026-10-17</h2>
+<ul><li>ランクが1種類しかないゆくせさりは、名称の後ろのランク数字を表示しないように変更</li><li>「適用中のバフ」で、ダメージ計算に関係しない項目（防御・最大HP・HP自動回復・被ダメージ・被貫通ダメージ）と、備考の「なし」・説明用の注記を表示しないように変更</li></ul>
 <h2>2026-10-08</h2>
 <ul><li>メニュー（左上の三本線）を追加し、「与ダメージ計算」と「アップデート履歴」を切り替えられるように変更</li><li>ページ下部に、不具合報告フォームとXのリンクを追加</li><li>名称を「ゆく育ダメージ計算機」に変更</li></ul>
 <h2>2026-10-06</h2>
@@ -262,7 +264,7 @@ footer a{color:var(--acc);text-decoration:none}footer a:hover{text-decoration:un
     const w1 = m.weapon, w2 = m.weapon2;
     const wtype = weaponType(DATA, w1);
     const push = (src, name, rank, b, extra) => {
-      const e = Object.assign({ owner: j, src, name, rank, label: name + (rank ? ' ' + rank : ''), note: b && b.note, raw: b || null }, extra || {});
+      const e = Object.assign({ owner: j, src, name, rank, label: name + (rank && !(src === 'yuku' && new Set((I.yukuBuff[name] || []).map(x => x.r).filter(Boolean)).size <= 1) ? ' ' + rank : ''), note: b && b.note, raw: b || null }, extra || {});
       e.key = [j, src, name, rank || ''].join('|');
       e.scope = defScope(e);
       e.restrict = parseRestrict(b && b.note);
@@ -889,7 +891,7 @@ footer a{color:var(--acc);text-decoration:none}footer a:hover{text-decoration:un
         ${c.weapon.food ? `<label>食攻撃力(最大122) <input type="number" min="0" max="122" value="${m.food}" data-a="set" data-i="${i}" data-f="food"></label>` :
         `<label>武器 <select data-a="set" data-i="${i}" data-f="weapon">${[...new Set(wopts.map(e => e.type))].map(t => `<optgroup label="${esc(t)}">` + wopts.filter(e => e.type === t).map(e => opt(e.name, `${e.name}（攻${e.power}）`, e.name === m.weapon)).join('') + '</optgroup>').join('')}</select></label>`}
         <label>ゆくせさり <select data-a="yuku" data-i="${i}">${opt('', '—', !yk.name)}${yukuGroups.map(([gn, ns]) => `<optgroup label="${gn}">` + ns.map(n => opt(n, n, n === yk.name)).join('') + '</optgroup>').join('')}</select>
-          ${yranks.length ? `<select data-a="yukurank" data-i="${i}">${yranks.map(r => opt(r, 'ランク' + r, String(yk.rank) === r)).join('')}</select>` : ''}</label>
+          ${yranks.length > 1 ? `<select data-a="yukurank" data-i="${i}">${yranks.map(r => opt(r, 'ランク' + r, String(yk.rank) === r)).join('')}</select>` : ''}</label>
         <label>必殺技 <select data-a="ult" data-i="${i}">${opt('', '—', !(m.ult && m.ult.name))}${ultOpts.map(u => opt(u.page, u.page, m.ult && m.ult.name === u.page)).join('')}</select>
           ${ub && ub.byStar ? '<span class="muted">星数で自動</span>' : `<select data-a="ultrank" data-i="${i}">${uranks.map(r => opt(r, ub && r.includes('+') ? r : 'ランク' + r, m.ult && m.ult.rank === r)).join('')}</select>`}</label>
       </div>
@@ -931,11 +933,13 @@ footer a{color:var(--acc);text-decoration:none}footer a:hover{text-decoration:un
   }
 
   const CHNAME = { addAtk: '攻撃加算', uAdd: '必殺加算', isoAtk: '攻撃孤立', indep: '独立係数', uIndep: '必殺独立', coefBuf: '係数バフ', addVar: '加算可変', isoVar: '孤立可変', critRate: 'クリ率', critMult: 'クリ倍率', origAtk: '元攻撃力', origFlat: '元攻撃力(±)' };
+  const HIDE_COL = /防御|最大HP|HP自動回復|被ダメージ|被貫通/;
+  function noteText(n) { n = String(n == null ? '' : n); return (n === 'なし' || /&size\(\d+\)\{\d+\}/.test(n)) ? '' : n; }
   function effText(info) {
     const e = info.e; const parts = [];
     if (e.src === 'ult') { const ub = e.ub; const r = ub.byStar ? ub.ranks['星' + E.starOf(DATA, state.party[0])] : ub.ranks[e.rk]; if (r) parts.push(`攻撃+${r.addAtk || 0}%` + (r.critRate ? ` クリ率+${r.critRate}% クリ倍+${r.critMult || 0}%` : '')); }
     else if (e.src === 'special') { const s = e.spec; if (s.byStar) parts.push('元ステ(星別)'); if (s.orig) parts.push(`元攻撃力+${s.orig}%`); if (s.addAtk) parts.push(`攻撃加算+${s.addAtk}%`); if (s.critRate) parts.push(`クリ率+${s.critRate}%`); if (s.critMult) parts.push(`クリ倍+${s.critMult}%`); if (s.perCount) parts.push('1回あたり ' + Object.entries(s.perCount).map(([k, v]) => `${CHNAME[k] || k}+${v}%`).join(' ')); if (s.flag) parts.push('強化フラグ'); }
-    else for (const [col, v] of Object.entries(e.raw.e)) { if (v.raw) parts.push(`${col.replace('(%)', '')} ${v.raw}`); else if (v.v != null) parts.push(`${col.replace('(%)', '')} ${v.v}${col.includes('(±)') ? '' : '%'}`); }
+    else for (const [col, v] of Object.entries(e.raw.e)) { if (HIDE_COL.test(col)) continue; if (v.raw) parts.push(`${col.replace('(%)', '')} ${v.raw}`); else if (v.v != null) parts.push(`${col.replace('(%)', '')} ${v.v}${col.includes('(±)') ? '' : '%'}`); }
     return parts.join(' / ');
   }
   function xRange(e) {
@@ -968,7 +972,7 @@ footer a{color:var(--acc);text-decoration:none}footer a:hover{text-decoration:un
       for (const u of topRows) {
         const e = u.e, ov = u.ov, k = esc(e.key), herd = e.name === '群れとしての強さ';
         h += `<tr class="${u.active ? '' : 'off'}${u.dup ? ' dup' : ''}"><td><input type="checkbox" data-a="ov" data-k="${k}" data-f="on"${ov.on ? ' checked' : ''}></td>
-          <td class="nm">${esc(e.label)}<div class="eff">${esc(effText(u))}</div><div class="note">${esc(String(e.note || ''))}</div></td>
+          <td class="nm">${esc(e.label)}<div class="eff">${esc(effText(u))}</div>${noteText(e.note) ? `<div class="note">${esc(noteText(e.note))}</div>` : ''}</td>
           <td><label class="mini">発動具合（0〜1）<input type="number" step="0.1" min="0" max="1" value="${ov.rate}" data-a="ov" data-k="${k}" data-f="rate"></label>
           ${herd ? `<label class="mini">場に出ている数<input type="number" min="1" max="8" value="${state.others.herdN}" data-a="oherdn"></label>` : `<label class="mini">${esc((e.spec && e.spec.count) || 'x')}<input type="number" step="any" min="0" value="${ov.x == null ? 0 : ov.x}" data-a="ov" data-k="${k}" data-f="x"></label>`}</td></tr>`;
       }
@@ -982,7 +986,7 @@ footer a{color:var(--acc);text-decoration:none}footer a:hover{text-decoration:un
         const e = u.e, ov = u.ov; const k = esc(e.key);
         const dis = !u.scopeOK;
         h += `<tr class="${u.active ? '' : 'off'}${u.dup ? ' dup' : ''}"><td><input type="checkbox" data-a="ov" data-k="${k}" data-f="on"${ov.on ? ' checked' : ''}></td>
-          <td class="nm">${esc(e.label)}<div class="eff">${esc(effText(u))}</div>${e.note ? `<div class="note">${esc(String(e.note).replace(/※&size\(9\)\{\d\}/g, ''))}</div>` : ''}${own && dis ? '<div class="note warn">自分には効果がありません</div>' : ''}${u.dup ? '<div class="note warn">同じ必殺技・同ランクは重複しません</div>' : ''}</td>
+          <td class="nm">${esc(e.label)}<div class="eff">${esc(effText(u))}</div>${noteText(e.note) ? `<div class="note">${esc(noteText(e.note))}</div>` : ''}${own && dis ? '<div class="note warn">自分には効果がありません</div>' : ''}${u.dup ? '<div class="note warn">同じ必殺技・同ランクは重複しません</div>' : ''}</td>
           <td><label class="mini">発動具合（0〜1）<input type="number" step="0.1" min="0" max="1" value="${ov.rate}" data-a="ov" data-k="${k}" data-f="rate"></label>
           ${e.name === '脇差・子狐丸' ? `<div><label class="mini">プロック率(%)<input type="number" min="0" max="100" step="0.1" value="${Math.round(state.global.wakiRate * 10000) / 100}" data-a="g" data-f="wakiRate"></label></div>` : ''}
           ${needsX(e) && !(e.spec && e.spec.perCount && !own) ? `<label class="mini">${esc((e.spec && e.spec.count) || 'x')}<input type="number" step="any" ${xRange(e)} value="${ov.x == null ? 0 : ov.x}" data-a="ov" data-k="${k}" data-f="x"></label>` : ''}
@@ -1068,7 +1072,7 @@ footer a{color:var(--acc);text-decoration:none}footer a:hover{text-decoration:un
   function imgInfo(res) {
     const m = state.party[0];
     const st = E.starOf(DATA, m);
-    return { name: m.char, star: st, lv: m.lv, atk: res.stats.atk, weapon: effWeapon(m) || '', yuku: m.yuku ? m.yuku.name + (m.yuku.rank ? '（ランク' + m.yuku.rank + '）' : '') : 'なし', ult: m.ult ? m.ult.name + '（ランク' + m.ult.rank + '）' : 'なし', buffs: buffNames(res), time: new Date().toLocaleDateString('ja-JP') };
+    return { name: m.char, star: st, lv: m.lv, atk: res.stats.atk, weapon: effWeapon(m) || '', yuku: m.yuku ? m.yuku.name + (m.yuku.rank && (yukuNames[m.yuku.name] || []).size > 1 ? '（ランク' + m.yuku.rank + '）' : '') : 'なし', ult: m.ult ? m.ult.name + '（ランク' + m.ult.rank + '）' : 'なし', buffs: buffNames(res), time: new Date().toLocaleDateString('ja-JP') };
   }
   function makeImage(title, info, rows, waki) {
     const W = 900, P = 28, S = 2;
