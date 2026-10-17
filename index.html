@@ -34,7 +34,7 @@ input[type=checkbox]{width:18px;height:18px;padding:0}
 .tag{font-size:11px;padding:1px 6px;border-radius:99px;background:var(--off);border:1px solid var(--line);margin-left:4px}
 .tag.r1{background:var(--acc);color:#fff;border-color:var(--acc)}
 .sub{margin:6px 0;border-top:1px dashed var(--line);padding-top:6px}
-.sname{border:0;border-bottom:1px dashed transparent;background:transparent;font-weight:bold;font-size:1em;color:inherit;width:12em}.sname:hover,.sname:focus{border-bottom-color:#888}
+.scn{font-weight:bold;color:#2f6fed}.sname{border:0;border-bottom:1px dashed transparent;background:transparent;font-weight:bold;font-size:1em;color:inherit;width:12em}.sname:hover,.sname:focus{border-bottom-color:#888}
 .btn{cursor:pointer;padding:3px 10px}
 .cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:start}
 .right{position:sticky;top:8px;max-height:calc(100vh - 16px);overflow:auto}
@@ -91,6 +91,8 @@ footer a{color:var(--acc);text-decoration:none}footer a:hover{text-decoration:un
 <main id="app"></main>
 <main id="hist" hidden>
 <h1 style="font-size:20px;margin:6px 0">アップデート履歴</h1>
+<h2>2026-10-18</h2>
+<ul><li>画像の保存画面の「共有」を「画像をコピー」に変更</li><li>「保存した与ダメージ」に「全体を画像にする」を追加（保存した結果をまとめて1枚の画像にできます）</li><li>保存した与ダメージの名前入力欄の左に、キャラ名を表示</li><li>ファンタズマスキルで「ピンチをチャンスに」を選んだときに、プルダウンの左に戦闘不能者数の入力欄を表示（適用中のバフの戦闘不能者数と連動）</li></ul>
 <h2>2026-10-17</h2>
 <ul><li>ランクが1種類しかないゆくせさりは、名称の後ろのランク数字を表示しないように変更</li><li>「適用中のバフ」で、ダメージ計算に関係しない項目（防御・最大HP・HP自動回復・被ダメージ・被貫通ダメージ）と、備考の「なし」・説明用の注記を表示しないように変更</li></ul>
 <h2>2026-10-08</h2>
@@ -817,7 +819,9 @@ footer a{color:var(--acc);text-decoration:none}footer a:hover{text-decoration:un
     const showSp = (n, cat) => !HIDE.includes(n) && !/ダメージ計算に影響なし/.test((DATA.special[cat][n] || {}).note || '') && (!COND[n] || COND[n]());
     for (const cat of Object.keys(DATA.special)) {
       const cur = (m.special || {})[cat] || '';
-      h += `<label class="sk"><span>${esc(cat)}</span><select data-a="spec" data-i="${i}" data-cat="${esc(cat)}">` + opt('', '—', !cur) +
+      const pk = '0|special|ピンチをチャンスに|';
+      const pinch = i === 0 && cat === 'ファンタズマ' && cur === 'ピンチをチャンスに' ? `<span class="mini">戦闘不能者数 <input type="number" step="any" min="0" value="${(state.ov[pk] && state.ov[pk].x != null) ? state.ov[pk].x : 0}" data-a="ov" data-k="${pk}" data-f="x" style="width:4em"></span> ` : '';
+      h += `<label class="sk"><span>${esc(cat)}</span>${pinch}<select data-a="spec" data-i="${i}" data-cat="${esc(cat)}">` + opt('', '—', !cur) +
         Object.keys(DATA.special[cat])  .filter(n => !DATA.special[cat][n].free && showSp(n, cat)).map(n => opt(n, n, n === cur)).join('') + '</select></label>';
     }
     return h + '</div>';
@@ -999,10 +1003,10 @@ footer a{color:var(--acc);text-decoration:none}footer a:hover{text-decoration:un
 
   function savesPanel(res) {
     if (!saves.length) return '';
-    let h = '<section><h2>保存した与ダメージ</h2><p><button data-a="delall" class="btn">すべて削除</button></p>';
+    let h = '<section><h2>保存した与ダメージ <button data-a="imgall" class="btn sm">全体を画像にする</button></h2><p><button data-a="delall" class="btn">すべて削除</button></p>';
     for (const s of saves) {
       const waki = s.rows.some(r => r.critProc != null);
-      h += `<div class="card"><div class="orow"><input class="sname" data-a="sname" data-id="${s.id}" value="${esc(s.name)}" title="クリックして名前を変更">
+      h += `<div class="card"><div class="orow"><span class="scn">${esc((s.info && s.info.name) || '')}</span><input class="sname" data-a="sname" data-id="${s.id}" value="${esc(s.name)}" title="クリックして名前を変更">
         <button data-a="restore" data-id="${s.id}" class="btn">復元</button><button data-a="imgsave" data-id="${s.id}" class="btn">画像にする</button><button data-a="del" data-id="${s.id}" class="btn">削除</button></div>
         <div class="tw"><table class="res"><thead><tr><th>攻撃</th><th>通常</th><th>クリティカル</th><th>期待値</th>${waki ? '<th>子狐丸クリ</th>' : ''}</tr></thead><tbody>` +
         s.rows.map(r => `<tr><td>${esc(r.label)}</td><td>${fmt(r.normal)}</td><td>${fmt(r.crit)}</td><td>${fmt(r.expect)}</td>${waki ? `<td>${fmt(r.critProc)}</td>` : ''}</tr>`).join('') + '</tbody></table></div></div>';
@@ -1135,12 +1139,13 @@ footer a{color:var(--acc);text-decoration:none}footer a:hover{text-decoration:un
     const url = cv.toDataURL('image/png');
     const ov = document.createElement('div');
     ov.style.cssText = 'position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.65);display:flex;flex-direction:column;align-items:center;gap:10px;padding:14px;overflow:auto';
-    ov.innerHTML = `<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"><a class="btn" id="imgdl" download="${esc(fname)}" href="${url}" style="background:#2f6fed;color:#fff;text-decoration:none;padding:6px 14px">画像を保存</a><button class="btn" id="imgsh" style="padding:6px 14px">共有</button><button class="btn" id="imgx" style="padding:6px 14px">閉じる</button></div><img src="${url}" style="max-width:min(900px,100%);height:auto;background:#fff;border-radius:6px"><span style="color:#fff;font-size:12px">保存できない場合は、画像を長押ししてください</span>`;
+    ov.innerHTML = `<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"><a class="btn" id="imgdl" download="${esc(fname)}" href="${url}" style="background:#2f6fed;color:#fff;text-decoration:none;padding:6px 14px">画像を保存</a><button class="btn" id="imgsh" style="padding:6px 14px">画像をコピー</button><button class="btn" id="imgx" style="padding:6px 14px">閉じる</button></div><img src="${url}" style="max-width:min(900px,100%);height:auto;background:#fff;border-radius:6px"><span style="color:#fff;font-size:12px">保存できない場合は、画像を長押ししてください</span>`;
     document.body.appendChild(ov);
     const close = () => ov.remove();
     ov.querySelector('#imgx').onclick = close;
     ov.addEventListener('click', e => { if (e.target === ov) close(); });
-    ov.querySelector('#imgsh').onclick = () => cv.toBlob(b => { try { const f = new File([b], fname, { type: 'image/png' }); if (navigator.canShare && navigator.canShare({ files: [f] })) navigator.share({ files: [f] }).catch(() => { }); else alert('この環境では共有に対応していません。「画像を保存」を使ってください。'); } catch (e) { } }, 'image/png');
+    ov.querySelector('#imgsh').onclick = ev => { const btn = ev.currentTarget; const say = s => { btn.textContent = s; setTimeout(() => { btn.textContent = '画像をコピー'; }, 2000); };
+      cv.toBlob(b => { try { if (!navigator.clipboard || !window.ClipboardItem) { say('コピー非対応'); return; } navigator.clipboard.write([new ClipboardItem({ 'image/png': b })]).then(() => say('コピーしました'), () => say('コピーできませんでした')); } catch (e) { say('コピーできませんでした'); } }, 'image/png'); };
   }
 
   // ---------- 検索できるプルダウン ----------
@@ -1342,6 +1347,16 @@ footer a{color:var(--acc);text-decoration:none}footer a:hover{text-decoration:un
     } else if (a === 'del') { saves = saves.filter(x => x.id !== +t.dataset.id); render(); }
     else if (a === 'delall') { saves = []; render(); }
     else if (a === 'restore') { const s = saves.find(x => x.id === +t.dataset.id); if (s) { const c = clone(s.snap); state.party = c.party; state.others = c.others; state.ov = c.ov; state.global = c.global; state.manual = c.manual || {}; state.manualT = c.manualT || {}; state.coefOv = c.coefOv || {}; state.ojisan = c.ojisan || {}; render(); } }
+    else if (a === 'imgall') {
+      if (!saves.length) return;
+      const cvs = saves.map(s => makeImage(s.name, s.info, s.rows, s.waki));
+      const gap = 24, w = Math.max(...cvs.map(c => c.width)); let hh = cvs.reduce((n, c) => n + c.height, 0) + gap * (cvs.length - 1);
+      const k = Math.min(1, Math.sqrt(16000000 / (w * hh)));
+      const cv = document.createElement('canvas'); cv.width = Math.floor(w * k); cv.height = Math.floor(hh * k);
+      const cx = cv.getContext('2d'); cx.fillStyle = '#ffffff'; cx.fillRect(0, 0, cv.width, cv.height);
+      let y = 0; for (const c of cvs) { cx.drawImage(c, 0, y * k, c.width * k, c.height * k); y += c.height + gap; if (y - gap < hh) { cx.fillStyle = '#d9dde5'; cx.fillRect(0, (y - gap / 2) * k, cv.width, Math.max(1, k * 2)); } }
+      showImage(cv, 'yukuiku-all.png');
+    }
     else if (a === 'imgsave') { const s = saves.find(x => x.id === +t.dataset.id); if (s) showImage(makeImage(s.name, s.info, s.rows, s.waki), 'yukuiku-' + s.name + '.png'); }
     else if (a === 'imgnow') { let res; try { res = E.evaluate(DATA, I, evState(), 0); } catch (e) { return; } const w = !!res.waki; showImage(makeImage('与ダメージ', imgInfo(res), res.rows.filter(r => !r.inactive && !unchecked.has(r.id)), w), 'yukuiku-damage.png'); }
   });
