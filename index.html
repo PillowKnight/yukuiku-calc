@@ -138,7 +138,7 @@ footer a{color:var(--acc);text-decoration:none}footer a:hover{text-decoration:un
 <main id="hist" hidden>
 <h1 style="font-size:20px;margin:6px 0">アップデート履歴</h1>
 <h2>2026-10-31</h2>
-<ul><li>「元ステータス比較」の入力欄のレイアウトを整理（入力欄・プルダウンを必要な幅に縮め、才能値の幅を入力欄のすぐ右に表示。元ステータスに影響しないファンタズマスキルの欄を削除）</li></ul>
+<ul><li>「元ステータス比較」の入力欄のレイアウトを整理（入力欄・プルダウンを必要な幅に縮め、才能値の幅を入力欄のすぐ右に表示。元ステータスに影響しないファンタズマスキルの欄を削除）</li><li>「元ステータス比較」で、天使の祈り（HP・攻撃・防御すべてに同じ上昇量）、浜辺のヴィーナス（ウェットスーツ装備時に攻撃・防御+100%）、目が赤いほど良い（上昇率を0〜128.63504%で入力）に対応。硬くなったまんじゅうは、アマノジャク習得時は防御才能値-5として計算</li></ul>
 <h2>2026-10-30</h2>
 <ul><li>メニューに「キャラ別 才能・スキル枠」を追加（キャラごとの才能値の幅と、枠ごとに習得できるスキルを、wikiと同じ形式の表で表示。枠の番号の横の▲で、その枠で習得できるスキルを上に集められます）</li><li>メニューに「元ステータス比較」を追加（複数のキャラを選び、レベル・才能値・ゆくせさり・スキル・特殊習得スキルを入れて、元の最大HP・攻撃力・防御力を比べられます。HP・Atk・Defのうち見たいものだけを選べて、昇順・降順の並べ替えと画像保存に対応）</li><li>「群れとしての強さ」の場に出ている数に、入力の上限を設けないように変更</li></ul>
 <h2>2026-10-29</h2>
@@ -1504,8 +1504,9 @@ footer a{color:var(--acc);text-decoration:none}footer a:hover{text-decoration:un
   var STATS = [['hp', 'HP', '最大HP'], ['atk', 'Atk', '元攻撃力'], ['def', 'Def', '元防御力']];
   var CHMAP = { hp: ['元最大HPバフ(%)'], atk: ['元攻撃力バフ(%)', '元攻撃力バフ', '元攻撃力バフ(±)'], def: ['元防御力バフ(%)', '元防御力バフ', '元防御力バフ(±)'] };
   var SPEC_ST = { 'ブラッドレイ': ['atk'], '天使の祈り': ['hp', 'atk', 'def'], 'マジックブースター': ['atk'], '硬くなったまんじゅう': ['def'] };
-  var UNK_SPEC = { '天使の祈り': ['hp', 'def'] };      // 効果の値が未登録
-  var UNK_SKILL = { '浜辺のヴィーナス': ['atk', 'def'], '目が赤いほど良い': ['hp', 'atk', 'def'] }; // xの値が未登録
+  var UNK_SPEC = {};
+  var UNK_SKILL = {};
+  var RED_MAX = 128.63504;
   var SKILL_WEAPONS = ['デスサイズ', 'ユグドラシルの杖'];
 
   function statsOfBuff(b) { var s = {}; if (!b.e) return s; STATS.forEach(function (x) { if (CHMAP[x[0]].some(function (k) { return b.e[k]; })) s[x[0]] = 1; }); return s; }
@@ -1515,8 +1516,8 @@ footer a{color:var(--acc);text-decoration:none}footer a:hover{text-decoration:un
     if (b.g === 'ゆくせさり') { var y = yuku[b.n] = yuku[b.n] || { ranks: new Set(), st: {} }; if (b.r) y.ranks.add(String(b.r)); Object.assign(y.st, st); }
     else if (b.g === 'スキル') { var k = norm(b.n) + '|' + (b.r || ''); skl[k] = Object.assign(skl[k] || {}, st); }
   });
-  var yukuAll = {};
-  DATA.buffs.forEach(function (b) { if (b.g === 'ゆくせさり') { yukuAll[b.n] = yukuAll[b.n] || new Set(); if (b.r) yukuAll[b.n].add(String(b.r)); } });
+  var yukuAll = {}, yukuGrp = {};
+  DATA.buffs.forEach(function (b) { if (b.g === 'ゆくせさり') { yukuGrp[b.n] = b.grp || ''; yukuAll[b.n] = yukuAll[b.n] || new Set(); if (b.r) yukuAll[b.n].add(String(b.r)); } });
   function ranksOf(n) { return Array.from(yukuAll[n] || []).sort(function (a, b) { return +a - +b; }); }
 
   function weaponOptions(c) {
@@ -1534,7 +1535,7 @@ footer a{color:var(--acc);text-decoration:none}footer a:hover{text-decoration:un
 
   // ---- 状態 ----
   var uid = 1;
-  function blank() { return { id: uid++, char: '', lv: 280, tal: [0, 0, 0, 0], weapon: null, yuku: '', yrank: '', sk: {}, sp: {}, open: false }; }
+  function blank() { return { id: uid++, char: '', lv: 280, tal: [0, 0, 0, 0], weapon: null, yuku: '', yrank: '', sk: {}, sp: {}, red: RED_MAX, open: false }; }
   var S = { chk: { hp: true, atk: true, def: true }, ent: [], sort: null };
   try { var raw = localStorage.getItem(KEY); if (raw) { var t = JSON.parse(raw); if (t && t.ent) { S.chk = t.chk || S.chk; S.ent = t.ent.filter(function (e) { return e.char && DATA.chars[e.char]; }).map(function (e) { e.id = uid++; return e; }); S.sort = t.sort || null; } } } catch (e) { }
   function ensureBlank() { if (!S.ent.length || S.ent[S.ent.length - 1].char) S.ent.push(blank()); }
@@ -1575,13 +1576,18 @@ footer a{color:var(--acc);text-decoration:none}footer a:hover{text-decoration:un
       if (x.rank) { var a = skills[x.name]; if (!Array.isArray(a)) a = skills[x.name] = []; var rr = ROMAN[x.rank]; if (a.indexOf(rr) < 0) a.push(rr); } else skills[x.name] = true;
     });
     var tal = en.tal.map(function (v) { return +v || 0; });
-    if (en.sp['エンシェント'] === '硬くなったまんじゅう') tal[2] += 5;
     var m = { char: en.char, role: 1, lv: +en.lv || 1, tal: tal, weapon: en.weapon, weapon2: null, food: 122, skills: skills, special: {}, glory: false, yuku: en.yuku ? { name: en.yuku, rank: en.yrank } : null, ult: null };
     Object.keys(en.sp).forEach(function (k) { if (en.sp[k]) m.special[k] = en.sp[k]; });
     if (m.char === '魔王姉' && skills['デスサイズ']) m.weapon = 'デスサイズ';
     if (m.char === '魔王妹' && skills['ユグドラシルの杖']) m.weapon = 'ユグドラシルの杖';
     var st = { alwaysBuf: false, party: [m], others: { ults: [], skills: {}, spear: false, wing: false, general: false, glory: false, herd: false, herdN: 4, flags: {} }, ojisan: {}, manual: {}, manualT: {}, coefOv: {}, ov: {}, global: { achv: 0.1 } };
-    var ag = E.aggregate(DATA, I, st, 0, null), A = ag.A, ss = E.stats(DATA, I, st, 0, A), t2 = ss.tal, lv = m.lv;
+    var ag = E.aggregate(DATA, I, st, 0, null), A = ag.A, lv = m.lv;
+    Object.keys(en.sp).forEach(function (cat) { if (en.sp[cat] === '天使の祈り') { var v = (DATA.special[cat]['天使の祈り'].byStar[E.starOf(DATA, m)] || 0) / 100; A.origHP += v; A.origDef += v; } });
+    var has = function (n) { return eff.some(function (x) { return x.name === n; }); };
+    if (has('浜辺のヴィーナス') && /^ウェットスーツ/.test(yukuGrp[en.yuku] || '')) { A.origAtk += 1; A.origDef += 1; }
+    if (has('目が赤いほど良い')) { var rd = Math.max(0, Math.min(RED_MAX, en.red == null ? RED_MAX : +en.red)) / 100; var dd = rd - RED_MAX / 100; A.origHP += dd; A.origAtk += dd; A.origDef += dd; } // エンジンが既定値(最大)で加算済みなので差分だけ補正
+    var ss = E.stats(DATA, I, st, 0, A), t2 = ss.tal.slice();
+    if (en.sp['エンシェント'] === '硬くなったまんじゅう') t2[2] += E.learnedSet(DATA, m).set.has(norm('アマノジャク')) ? -5 : 5;
     var warns = [], act = active();
     Object.keys(en.sp).forEach(function (cat) { var n = en.sp[cat], u = UNK_SPEC[n]; if (u && u.some(function (a) { return act.indexOf(a) >= 0; })) warns.push(n + '（' + u.filter(function (a) { return act.indexOf(a) >= 0; }).map(function (a) { return a.toUpperCase().replace('ATK', 'Atk').replace('DEF', 'Def'); }).join('・') + '）'); });
     eff.forEach(function (x) { var u = UNK_SKILL[x.name]; if (u && u.some(function (a) { return act.indexOf(a) >= 0; })) warns.push(x.name); });
@@ -1632,7 +1638,8 @@ footer a{color:var(--acc);text-decoration:none}footer a:hover{text-decoration:un
       if (act.indexOf(x[0]) < 0) return; var i = ti[x[0]], v = en.tal[i];
       h += '<label>' + x[1] + '才能値 <input type="text" inputmode="numeric" data-a="tal" data-i="' + i + '" data-id="' + en.id + '" value="' + esc(v) + '" class="' + (v < c.min[i] || v > c.max[i] ? 'bad' : '') + '"><span class="muted">(' + c.min[i] + '〜' + c.max[i] + ')</span></label>';
     });
-    var ys = Object.keys(yuku).filter(function (n) { return hit(yuku[n].st, act); }), yg = { 'ランクゆくせ': [], 'ランク5': [], 'ランク4': [], 'ランク3': [], 'ランク2': [], 'ランク1': [], 'その他': [] };
+    var effNow = effSkills(en, skillList(en.char)), hasV = effNow.some(function (x) { return x.name === '浜辺のヴィーナス'; }), hasR = effNow.some(function (x) { return x.name === '目が赤いほど良い'; }),
+      ys = Object.keys(yukuAll).filter(function (n) { return (yuku[n] && hit(yuku[n].st, act)) || (hasV && (act.indexOf('atk') >= 0 || act.indexOf('def') >= 0) && /^ウェットスーツ/.test(yukuGrp[n] || '')); }), yg = { 'ランクゆくせ': [], 'ランク5': [], 'ランク4': [], 'ランク3': [], 'ランク2': [], 'ランク1': [], 'その他': [] };
     if (en.yuku && ys.indexOf(en.yuku) < 0) en.yuku = '';
     ys.forEach(function (n) { var rs = ranksOf(n); if (rs.length > 1) yg['ランクゆくせ'].push(n); else if (rs.length === 1) (yg['ランク' + rs[0]] || yg['その他']).push(n); else yg['その他'].push(n); });
     var yr = en.yuku ? ranksOf(en.yuku) : [];
@@ -1643,6 +1650,7 @@ footer a{color:var(--acc);text-decoration:none}footer a:hover{text-decoration:un
       if (!ns.length) return;
       h += '<label>特殊習得（' + esc(cat) + '） <select data-a="spec" data-cat="' + esc(cat) + '" data-id="' + en.id + '">' + opt('', '—', !en.sp[cat]) + ns.map(function (n) { return opt(n, n, en.sp[cat] === n); }).join('') + '</select></label>';
     });
+    if (hasR) h += '<label>目が赤いほど良い <input type="text" inputmode="decimal" data-a="red" data-id="' + en.id + '" value="' + esc(en.red == null ? RED_MAX : en.red) + '" style="width:7em"> %<span class="muted">(0〜' + RED_MAX + ')</span></label>';
     var wsel = Object.keys(en.sp).some(function (k) { return en.sp[k] === 'マジックブースター'; });
     if (wsel && !c.weapon.food) h += '<label>武器（杖装備時のみ有効） <select data-a="weapon" data-id="' + en.id + '">' + weaponOptions(c).map(function (e) { return opt(e.name, e.name, e.name === en.weapon); }).join('') + '</select></label>';
     h += '</div>';
@@ -1738,9 +1746,10 @@ footer a{color:var(--acc);text-decoration:none}footer a:hover{text-decoration:un
     save(); render();
   });
   root.addEventListener('input', function (ev) {
-    var t = ev.target, a = t.dataset.a; if (a !== 'lv' && a !== 'tal') return;
+    var t = ev.target, a = t.dataset.a; if (a !== 'lv' && a !== 'tal' && a !== 'red') return;
     var en = byId(t.dataset.id); if (!en) return;
-    if (a === 'lv') en.lv = Math.max(1, Math.min(280, Math.round(+t.value) || 1));
+    if (a === 'red') en.red = Math.max(0, Math.min(RED_MAX, +t.value || 0));
+    else if (a === 'lv') en.lv = Math.max(1, Math.min(280, Math.round(+t.value) || 1));
     else { var i = +t.dataset.i, c = DATA.chars[en.char], v = t.value.trim() === '' ? 0 : +t.value; en.tal[i] = isFinite(v) ? v : 0; t.classList.toggle('bad', en.tal[i] < c.min[i] || en.tal[i] > c.max[i]); }
     save(); document.getElementById('bs-res').innerHTML = resHtml();
   });
