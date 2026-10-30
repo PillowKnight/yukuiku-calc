@@ -138,7 +138,7 @@ footer a{color:var(--acc);text-decoration:none}footer a:hover{text-decoration:un
 <main id="hist" hidden>
 <h1 style="font-size:20px;margin:6px 0">アップデート履歴</h1>
 <h2>2026-10-31</h2>
-<ul><li>「元ステータス比較」の入力欄のレイアウトを整理（入力欄・プルダウンを必要な幅に縮め、才能値の幅を入力欄のすぐ右に表示。元ステータスに影響しないファンタズマスキルの欄を削除）</li><li>「元ステータス比較」で、天使の祈り（HP・攻撃・防御すべてに同じ上昇量）、浜辺のヴィーナス（ウェットスーツ装備時に攻撃・防御+100%）、目が赤いほど良い（上昇率を0〜128.63504%で入力）に対応。硬くなったまんじゅうは、アマノジャク習得時は防御才能値-5として計算</li></ul>
+<ul><li>「元ステータス比較」の浜辺のヴィーナスの計算を修正（ウェットスーツ装備時は、攻撃・防御に一律+100%ではなく、そのゆくせさりの元攻撃力・元防御力バフの効果量が+100%になる）</li></ul>
 <h2>2026-10-30</h2>
 <ul><li>メニューに「キャラ別 才能・スキル枠」を追加（キャラごとの才能値の幅と、枠ごとに習得できるスキルを、wikiと同じ形式の表で表示。枠の番号の横の▲で、その枠で習得できるスキルを上に集められます）</li><li>メニューに「元ステータス比較」を追加（複数のキャラを選び、レベル・才能値・ゆくせさり・スキル・特殊習得スキルを入れて、元の最大HP・攻撃力・防御力を比べられます。HP・Atk・Defのうち見たいものだけを選べて、昇順・降順の並べ替えと画像保存に対応）</li><li>「群れとしての強さ」の場に出ている数に、入力の上限を設けないように変更</li></ul>
 <h2>2026-10-29</h2>
@@ -1584,7 +1584,14 @@ footer a{color:var(--acc);text-decoration:none}footer a:hover{text-decoration:un
     var ag = E.aggregate(DATA, I, st, 0, null), A = ag.A, lv = m.lv;
     Object.keys(en.sp).forEach(function (cat) { if (en.sp[cat] === '天使の祈り') { var v = (DATA.special[cat]['天使の祈り'].byStar[E.starOf(DATA, m)] || 0) / 100; A.origHP += v; A.origDef += v; } });
     var has = function (n) { return eff.some(function (x) { return x.name === n; }); };
-    if (has('浜辺のヴィーナス') && /^ウェットスーツ/.test(yukuGrp[en.yuku] || '')) { A.origAtk += 1; A.origDef += 1; }
+    if (has('浜辺のヴィーナス') && /^ウェットスーツ/.test(yukuGrp[en.yuku] || '')) {
+      // ゆくせさりの効果量+100% ＝ そのゆくせさりの元攻撃力・元防御力バフをもう1回分加える
+      DATA.buffs.forEach(function (b) {
+        if (b.g !== 'ゆくせさり' || b.n !== en.yuku || !b.e || (b.r && String(b.r) !== String(en.yrank))) return;
+        ['元攻撃力バフ(%)', '元攻撃力バフ'].forEach(function (k) { if (b.e[k] && b.e[k].v) A.origAtk += b.e[k].v / 100; });
+        ['元防御力バフ(%)', '元防御力バフ'].forEach(function (k) { if (b.e[k] && b.e[k].v) A.origDef += b.e[k].v / 100; });
+      });
+    }
     if (has('目が赤いほど良い')) { var rd = Math.max(0, Math.min(RED_MAX, en.red == null ? RED_MAX : +en.red)) / 100; var dd = rd - RED_MAX / 100; A.origHP += dd; A.origAtk += dd; A.origDef += dd; } // エンジンが既定値(最大)で加算済みなので差分だけ補正
     var ss = E.stats(DATA, I, st, 0, A), t2 = ss.tal.slice();
     if (en.sp['エンシェント'] === '硬くなったまんじゅう') t2[2] += E.learnedSet(DATA, m).set.has(norm('アマノジャク')) ? -5 : 5;
