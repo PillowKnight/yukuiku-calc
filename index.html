@@ -55,6 +55,10 @@ input.bad{border-color:#d9534f;background:#fdecea;color:#7a1f1b}
 .wt td.nm{text-align:left}.wt td.memo{font-size:12px;color:var(--muted);min-width:10em}
 .wt tbody tr:nth-child(even){background:rgba(127,127,127,.06)}
 .up{border:0;background:none;cursor:pointer;font-size:11px;color:var(--muted);padding:0 0 0 3px}.up.on{color:var(--acc);font-weight:bold}
+#chars{font-size:13px}#chars .wt{font-size:12px}#chars .wt th,#chars .wt td{padding:4px 5px}#chars .wt td.nm{min-width:10em;line-height:1.3}
+@media (max-width:600px){#chars .wt{font-size:11px}#chars .wt th,#chars .wt td{padding:3px 2px}#chars .wt th .up{padding:2px 3px;font-size:12px}#chars .tblcard{padding:8px 4px}#chars .wt td.nm{min-width:0}#chars .wt.sk td:first-child,#chars .wt.sk th:first-child{width:1.6em}}
+#chars .wt th .up{font-size:13px;font-weight:bold;color:inherit;padding:2px 6px;cursor:pointer}#chars .wt th .up.on{color:var(--acc);text-decoration:underline}
+#chars .wt{width:auto}
 details.card>summary{cursor:pointer}
 .bsrow{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center}
 .bsrow label{display:inline-flex;flex-direction:row;align-items:center;gap:6px;white-space:nowrap;margin:0}
@@ -138,7 +142,7 @@ footer a{color:var(--acc);text-decoration:none}footer a:hover{text-decoration:un
 <main id="hist" hidden>
 <h1 style="font-size:20px;margin:6px 0">アップデート履歴</h1>
 <h2>2026-10-31</h2>
-<ul><li>「元ステータス比較」の浜辺のヴィーナスの計算を修正（ウェットスーツ装備時は、攻撃・防御に一律+100%ではなく、そのゆくせさりの元攻撃力・元防御力バフの効果量が+100%になる）</li></ul>
+<ul><li>「キャラ別 才能・スキル枠」の表を見やすく調整（固定枠を表から除外、文字サイズを小さく、スキル名の横幅を広げて無駄な改行を減らし、スマホで画面内に収まるように変更。枠番号の矢印をやめ、数字を押すとその枠のスキルが上に集まる形に変更）</li></ul>
 <h2>2026-10-30</h2>
 <ul><li>メニューに「キャラ別 才能・スキル枠」を追加（キャラごとの才能値の幅と、枠ごとに習得できるスキルを、wikiと同じ形式の表で表示。枠の番号の横の▲で、その枠で習得できるスキルを上に集められます）</li><li>メニューに「元ステータス比較」を追加（複数のキャラを選び、レベル・才能値・ゆくせさり・スキル・特殊習得スキルを入れて、元の最大HP・攻撃力・防御力を比べられます。HP・Atk・Defのうち見たいものだけを選べて、昇順・降順の並べ替えと画像保存に対応）</li><li>「群れとしての強さ」の場に出ている数に、入力の上限を設けないように変更</li></ul>
 <h2>2026-10-29</h2>
@@ -1436,6 +1440,7 @@ footer a{color:var(--acc);text-decoration:none}footer a:hover{text-decoration:un
   function rowsOf(name) {
     var slots = SL[name].slots, order = [], map = {};
     slots.forEach(function (cands, i) {
+      if (cands.length === 1) return;
       cands.forEach(function (cd) {
         var k = cd[0] + '|' + (cd[1] || 0);
         if (!map[k]) { map[k] = { name: cd[0], rank: cd[1] || 0, at: {} }; order.push(map[k]); }
@@ -1449,7 +1454,7 @@ footer a{color:var(--acc);text-decoration:none}footer a:hover{text-decoration:un
     var res = plain.concat(rr); res.forEach(function (r, i) { r.no = i + 1; }); return res;
   }
   function lab(r) { return r.name + (r.rank ? ROMAN[r.rank] : ''); }
-  function labHtml(r) { return esc(lab(r)).replace('敵を倒すと', '敵を倒すと<br>'); }
+  function labHtml(r) { return esc(lab(r)); }
 
   function render() {
     var h = '<h1 style="font-size:20px;margin:6px 0">キャラ別 才能・スキル枠</h1>';
@@ -1463,16 +1468,17 @@ footer a{color:var(--acc);text-decoration:none}footer a:hover{text-decoration:un
     h += '<div class="card"><div><b>' + esc(sel) + '</b> <span class="tag">★' + c.star + '</span> <span class="muted">スキル枠 ' + sl.length + '　武器: ' + (c.weapon.food ? '食攻撃力' : esc(c.weapon.types.concat(c.weapon.names).join('／'))) + (c.weapon.exclude.length ? '（除外: ' + esc(c.weapon.exclude.join('、')) + '）' : '') + '</span></div>';
     h += '<div class="tw"><table class="wt" style="max-width:420px;margin-top:8px"><thead><tr><th></th><th>HP</th><th>Atk</th><th>Def</th><th>Skill</th></tr></thead><tbody><tr><td>才能値</td>' + [0, 1, 2, 3].map(function (i) { return '<td>' + c.min[i] + '〜' + c.max[i] + '</td>'; }).join('') + '</tr></tbody></table></div></div>';
     if (sortSlot) rows = rows.filter(function (r) { return r.at[sortSlot]; }).concat(rows.filter(function (r) { return !r.at[sortSlot]; }));
+    var cols = []; sl.forEach(function (cands, i) { if (cands.length > 1) cols.push(i + 1); });
     var num = function (r) { return r.no; };
-    h += '<div class="card"><h4 style="margin-top:0">習得スキル表</h4><div class="tw"><table class="wt"><thead><tr><th>#</th><th>スキル名</th>';
-    for (var i = 1; i <= sl.length; i++) h += '<th>' + i + '<button type="button" class="up' + (sortSlot === i ? ' on' : '') + '" data-a="sort" data-s="' + i + '" title="この枠で習得できるスキルを上に集める">▲</button></th>';
+    h += '<div class="card tblcard"><h4 style="margin-top:0;padding:0 4px">習得スキル表 <span class="muted" style="font-weight:normal;font-size:12px">枠の数字をクリックすると、その枠のスキルが上に集まります</span></h4><div class="tw"><table class="wt sk"><thead><tr><th>#</th><th>スキル名</th>';
+    cols.forEach(function (i) { h += '<th><button type="button" class="up' + (sortSlot === i ? ' on' : '') + '" data-a="sort" data-s="' + i + '">' + i + '</button></th>'; });
     h += '</tr></thead><tbody>';
     rows.forEach(function (r) {
       h += '<tr><td>' + num(r) + '</td><td class="nm">' + labHtml(r) + '</td>';
-      for (var j = 1; j <= sl.length; j++) h += '<td>' + (r.at[j] ? '○' : '') + '</td>';
+      cols.forEach(function (j) { h += '<td>' + (r.at[j] ? '○' : '') + '</td>'; });
       h += '</tr>';
     });
-    h += '</tbody></table></div><p class="muted" style="margin:6px 0 0">枠の番号の横の ▲ を押すと、その枠で習得できるスキルが上に集まります（もう一度押すと元の順）。wikiの表をもとにしているため、抜けがある可能性があります。</p></div>';
+    h += '</tbody></table></div><p class="muted" style="margin:6px 0 0">固定枠（候補が1つだけの枠）は表に含めていません（下の一覧には表示）。もう一度数字を押すと元の順に戻ります。wikiの表をもとにしているため、抜けがある可能性があります。</p></div>';
     h += '<details class="card"><summary><b>枠ごとの習得スキル（一覧）</b></summary><div style="margin-top:8px">';
     sl.forEach(function (cands, i) {
       h += '<div class="slot"><span class="sn">枠' + (i + 1) + (cands.length === 1 ? '<small>固定</small>' : '') + '</span><span>' + cands.map(function (cd) { return esc(cd[0] + (cd[1] ? ROMAN[cd[1]] : '')); }).join('、') + '</span></div>';
