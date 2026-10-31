@@ -59,6 +59,7 @@ input.bad{border-color:#d9534f;background:#fdecea;color:#7a1f1b}
 @media (max-width:600px){#chars .wt{font-size:11px}#chars .wt th,#chars .wt td{padding:3px 2px}#chars .wt th .up{padding:2px 3px;font-size:12px}#chars .tblcard{padding:8px 4px}#chars .wt td.nm{min-width:0}#chars .wt.sk td:first-child,#chars .wt.sk th:first-child{width:1.6em}}
 #chars .wt th .up{font-size:13px;font-weight:bold;color:inherit;padding:2px 6px;cursor:pointer}#chars .wt th .up.on{color:var(--acc);text-decoration:underline}
 #chars .wt{width:auto}
+#chars .wt td.cl{cursor:pointer}#chars .wt td.cl.on{background:var(--acc);color:#fff}#chars .wt tr.got td.nm{font-weight:bold}
 details.card>summary{cursor:pointer}
 .bsrow{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center}
 .bsrow label{display:inline-flex;flex-direction:row;align-items:center;gap:6px;white-space:nowrap;margin:0}
@@ -141,7 +142,7 @@ footer a{color:var(--acc);text-decoration:none}footer a:hover{text-decoration:un
 </main>
 <main id="hist" hidden>
 <h1 style="font-size:20px;margin:6px 0">アップデート履歴</h1>
-<h2>2026-10-31</h2>\n<ul><li>「元ステータス比較」でアマノジャクを選べるように変更（選ぶと才能値が反転して計算され、反転後の才能値も表示）</li><li>「キャラ別 才能・スキル枠」の表を見やすく調整（固定枠を表から除外、文字サイズを小さく、スキル名の横幅を広げて無駄な改行を減らし、スマホで画面内に収まるように変更。枠番号の矢印をやめ、数字を押すとその枠のスキルが上に集まる形に変更）</li><li>「元ステータス比較」の浜辺のヴィーナスの計算を修正（ウェットスーツ装備時は、攻撃・防御に一律+100%ではなく、そのゆくせさりの元攻撃力・元防御力バフの効果量が+100%になる）</li><li>「元ステータス比較」の入力欄のレイアウトを整理（入力欄・プルダウンを必要な幅に縮め、才能値の幅を入力欄のすぐ右に表示。元ステータスに影響しないファンタズマスキルの欄を削除）</li><li>「元ステータス比較」で、天使の祈り（HP・攻撃・防御すべてに同じ上昇量）、浜辺のヴィーナス、目が赤いほど良い（上昇率を0〜128.63504%で入力）に対応。硬くなったまんじゅうは、アマノジャク習得時は防御才能値-5として計算</li></ul>\n<h2>2026-10-30</h2>
+<h2>2026-10-31</h2>\n<ul><li>「キャラ別 才能・スキル枠」で、表の○をクリックするとそのスキルがページ下部の「習得スキルの格納」の各枠に入るように変更（固定枠は自動表示、「選択を解除」あり）。すでに格納したスキルは、格納した枠以外の枠番号クリックでは上に集まらない</li><li>「元ステータス比較」でアマノジャクを選べるように変更（選ぶと才能値が反転して計算され、反転後の才能値も表示）</li><li>「キャラ別 才能・スキル枠」の表を見やすく調整（固定枠を表から除外、文字サイズを小さく、スキル名の横幅を広げて無駄な改行を減らし、スマホで画面内に収まるように変更。枠番号の矢印をやめ、数字を押すとその枠のスキルが上に集まる形に変更）</li><li>「元ステータス比較」の浜辺のヴィーナスの計算を修正（ウェットスーツ装備時は、攻撃・防御に一律+100%ではなく、そのゆくせさりの元攻撃力・元防御力バフの効果量が+100%になる）</li><li>「元ステータス比較」の入力欄のレイアウトを整理（入力欄・プルダウンを必要な幅に縮め、才能値の幅を入力欄のすぐ右に表示。元ステータスに影響しないファンタズマスキルの欄を削除）</li><li>「元ステータス比較」で、天使の祈り（HP・攻撃・防御すべてに同じ上昇量）、浜辺のヴィーナス、目が赤いほど良い（上昇率を0〜128.63504%で入力）に対応。硬くなったまんじゅうは、アマノジャク習得時は防御才能値-5として計算</li></ul>\n<h2>2026-10-30</h2>
 <ul><li>メニューに「キャラ別 才能・スキル枠」を追加（キャラごとの才能値の幅と、枠ごとに習得できるスキルを、wikiと同じ形式の表で表示。枠の番号の横の▲で、その枠で習得できるスキルを上に集められます）</li><li>メニューに「元ステータス比較」を追加（複数のキャラを選び、レベル・才能値・ゆくせさり・スキル・特殊習得スキルを入れて、元の最大HP・攻撃力・防御力を比べられます。HP・Atk・Defのうち見たいものだけを選べて、昇順・降順の並べ替えと画像保存に対応）</li><li>「群れとしての強さ」の場に出ている数に、入力の上限を設けないように変更</li></ul>
 <h2>2026-10-29</h2>
 <ul><li>キャラの才能値の幅の誤りを修正（狂戦士の防御才能の下限を10→4、ゆゆゆの攻撃才能の下限を24→26）</li></ul>
@@ -1432,7 +1433,7 @@ footer a{color:var(--acc);text-decoration:none}footer a:hover{text-decoration:un
   var ROMAN = window.Engine.ROMAN;
   var KEY = 'yukuiku-chars-v2';
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
-  var sel = '', sortSlot = null;
+  var sel = '', sortSlot = null, pick = {}; // pick: 枠番号 → スキルのキー
   try { var t = localStorage.getItem(KEY); if (t && DATA.chars[t]) sel = t; } catch (e) { }
 
   function rowsOf(name) {
@@ -1441,7 +1442,7 @@ footer a{color:var(--acc);text-decoration:none}footer a:hover{text-decoration:un
       if (cands.length === 1) return;
       cands.forEach(function (cd) {
         var k = cd[0] + '|' + (cd[1] || 0);
-        if (!map[k]) { map[k] = { name: cd[0], rank: cd[1] || 0, at: {} }; order.push(map[k]); }
+        if (!map[k]) { map[k] = { key: k, name: cd[0], rank: cd[1] || 0, at: {} }; order.push(map[k]); }
         map[k].at[i + 1] = true;
       });
     });
@@ -1465,15 +1466,19 @@ footer a{color:var(--acc);text-decoration:none}footer a:hover{text-decoration:un
     var c = DATA.chars[sel], sl = SL[sel].slots, rows = rowsOf(sel);
     h += '<div class="card"><div><b>' + esc(sel) + '</b> <span class="tag">★' + c.star + '</span> <span class="muted">スキル枠 ' + sl.length + '　武器: ' + (c.weapon.food ? '食攻撃力' : esc(c.weapon.types.concat(c.weapon.names).join('／'))) + (c.weapon.exclude.length ? '（除外: ' + esc(c.weapon.exclude.join('、')) + '）' : '') + '</span></div>';
     h += '<div class="tw"><table class="wt" style="max-width:420px;margin-top:8px"><thead><tr><th></th><th>HP</th><th>Atk</th><th>Def</th><th>Skill</th></tr></thead><tbody><tr><td>才能値</td>' + [0, 1, 2, 3].map(function (i) { return '<td>' + c.min[i] + '〜' + c.max[i] + '</td>'; }).join('') + '</tr></tbody></table></div></div>';
-    if (sortSlot) rows = rows.filter(function (r) { return r.at[sortSlot]; }).concat(rows.filter(function (r) { return !r.at[sortSlot]; }));
+    var where = {}; Object.keys(pick).forEach(function (sn) { where[pick[sn]] = +sn; });
+    if (sortSlot) {
+      var top = function (r) { return r.at[sortSlot] && (where[r.key] == null || where[r.key] === sortSlot); };
+      rows = rows.filter(top).concat(rows.filter(function (r) { return !top(r); }));
+    }
     var cols = []; sl.forEach(function (cands, i) { if (cands.length > 1) cols.push(i + 1); });
     var num = function (r) { return r.no; };
-    h += '<div class="card tblcard"><h4 style="margin-top:0;padding:0 4px">習得スキル表 <span class="muted" style="font-weight:normal;font-size:12px">枠の数字をクリックすると、その枠のスキルが上に集まります</span></h4><div class="tw"><table class="wt sk"><thead><tr><th>#</th><th>スキル名</th>';
+    h += '<div class="card tblcard"><h4 style="margin-top:0;padding:0 4px">習得スキル表 <span class="muted" style="font-weight:normal;font-size:12px">枠の数字をクリックすると、その枠のスキルが上に集まります。○をクリックすると、下の「習得スキルの格納」に入ります</span></h4><div class="tw"><table class="wt sk"><thead><tr><th>#</th><th>スキル名</th>';
     cols.forEach(function (i) { h += '<th><button type="button" class="up' + (sortSlot === i ? ' on' : '') + '" data-a="sort" data-s="' + i + '">' + i + '</button></th>'; });
     h += '</tr></thead><tbody>';
     rows.forEach(function (r) {
-      h += '<tr><td>' + num(r) + '</td><td class="nm">' + labHtml(r) + '</td>';
-      cols.forEach(function (j) { h += '<td>' + (r.at[j] ? '○' : '') + '</td>'; });
+      h += '<tr' + (where[r.key] != null ? ' class="got"' : '') + '><td>' + num(r) + '</td><td class="nm">' + labHtml(r) + '</td>';
+      cols.forEach(function (j) { var on = where[r.key] === j; h += r.at[j] ? '<td class="cl' + (on ? ' on' : '') + '" data-a="cell" data-k="' + esc(r.key) + '" data-s="' + j + '">' + (on ? '●' : '○') + '</td>' : '<td></td>'; });
       h += '</tr>';
     });
     h += '</tbody></table></div><p class="muted" style="margin:6px 0 0">固定枠（候補が1つだけの枠）は表に含めていません（下の一覧には表示）。もう一度数字を押すと元の順に戻ります。wikiの表をもとにしているため、抜けがある可能性があります。</p></div>';
@@ -1482,13 +1487,28 @@ footer a{color:var(--acc);text-decoration:none}footer a:hover{text-decoration:un
       h += '<div class="slot"><span class="sn">枠' + (i + 1) + (cands.length === 1 ? '<small>固定</small>' : '') + '</span><span>' + cands.map(function (cd) { return esc(cd[0] + (cd[1] ? ROMAN[cd[1]] : '')); }).join('、') + '</span></div>';
     });
     h += '</div></details>';
+    var byKey = {}; rowsOf(sel).forEach(function (x) { byKey[x.key] = x; });
+    h += '<div class="card"><h4 style="margin-top:0">習得スキルの格納 <button class="btn sm" data-a="clear">選択を解除</button></h4>';
+    sl.forEach(function (cands, i) {
+      var fx = cands.length === 1, nm = fx ? esc(cands[0][0] + (cands[0][1] ? ROMAN[cands[0][1]] : '')) + '<span class="muted">（固定）</span>' : (pick[i + 1] && byKey[pick[i + 1]] ? esc(lab(byKey[pick[i + 1]])) : '<span class="muted">—</span>');
+      h += '<div class="slot"><span class="sn">枠' + (i + 1) + '</span><span>' + nm + '</span></div>';
+    });
+    h += '</div>';
     root.innerHTML = h;
   }
   root.addEventListener('change', function (ev) {
     var t = ev.target; if (t.dataset.a !== 'char') return;
-    sel = t.value; sortSlot = null; try { localStorage.setItem(KEY, sel); } catch (e) { } render();
+    sel = t.value; sortSlot = null; pick = {}; try { localStorage.setItem(KEY, sel); } catch (e) { } render();
   });
   root.addEventListener('click', function (ev) {
+    var c = ev.target.closest('[data-a="cell"]');
+    if (c) {
+      var sn = +c.dataset.s, k = c.dataset.k;
+      if (pick[sn] === k) delete pick[sn];
+      else { Object.keys(pick).forEach(function (o) { if (pick[o] === k) delete pick[o]; }); pick[sn] = k; }
+      render(); return;
+    }
+    if (ev.target.closest('[data-a="clear"]')) { pick = {}; render(); return; }
     var b = ev.target.closest('[data-a="sort"]'); if (!b) return;
     var s = +b.dataset.s; sortSlot = sortSlot === s ? null : s; render();
   });
