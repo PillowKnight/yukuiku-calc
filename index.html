@@ -141,8 +141,6 @@ footer a{color:var(--acc);text-decoration:none}footer a:hover{text-decoration:un
 </main>
 <main id="hist" hidden>
 <h1 style="font-size:20px;margin:6px 0">アップデート履歴</h1>
-<h2>2026-10-31</h2>
-<ul><li>「キャラ別 才能・スキル枠」の表を見やすく調整（固定枠を表から除外、文字サイズを小さく、スキル名の横幅を広げて無駄な改行を減らし、スマホで画面内に収まるように変更。枠番号の矢印をやめ、数字を押すとその枠のスキルが上に集まる形に変更）</li></ul>
 <h2>2026-10-30</h2>
 <ul><li>メニューに「キャラ別 才能・スキル枠」を追加（キャラごとの才能値の幅と、枠ごとに習得できるスキルを、wikiと同じ形式の表で表示。枠の番号の横の▲で、その枠で習得できるスキルを上に集められます）</li><li>メニューに「元ステータス比較」を追加（複数のキャラを選び、レベル・才能値・ゆくせさり・スキル・特殊習得スキルを入れて、元の最大HP・攻撃力・防御力を比べられます。HP・Atk・Defのうち見たいものだけを選べて、昇順・降順の並べ替えと画像保存に対応）</li><li>「群れとしての強さ」の場に出ている数に、入力の上限を設けないように変更</li></ul>
 <h2>2026-10-29</h2>
@@ -1522,6 +1520,7 @@ footer a{color:var(--acc);text-decoration:none}footer a:hover{text-decoration:un
     if (b.g === 'ゆくせさり') { var y = yuku[b.n] = yuku[b.n] || { ranks: new Set(), st: {} }; if (b.r) y.ranks.add(String(b.r)); Object.assign(y.st, st); }
     else if (b.g === 'スキル') { var k = norm(b.n) + '|' + (b.r || ''); skl[k] = Object.assign(skl[k] || {}, st); }
   });
+  skl[norm('アマノジャク') + '|'] = { hp: 1, atk: 1, def: 1 }; // 才能値が反転するため、すべての元ステータスに影響
   var yukuAll = {}, yukuGrp = {};
   DATA.buffs.forEach(function (b) { if (b.g === 'ゆくせさり') { yukuGrp[b.n] = b.grp || ''; yukuAll[b.n] = yukuAll[b.n] || new Set(); if (b.r) yukuAll[b.n].add(String(b.r)); } });
   function ranksOf(n) { return Array.from(yukuAll[n] || []).sort(function (a, b) { return +a - +b; }); }
@@ -1604,7 +1603,7 @@ footer a{color:var(--acc);text-decoration:none}footer a:hover{text-decoration:un
     var warns = [], act = active();
     Object.keys(en.sp).forEach(function (cat) { var n = en.sp[cat], u = UNK_SPEC[n]; if (u && u.some(function (a) { return act.indexOf(a) >= 0; })) warns.push(n + '（' + u.filter(function (a) { return act.indexOf(a) >= 0; }).map(function (a) { return a.toUpperCase().replace('ATK', 'Atk').replace('DEF', 'Def'); }).join('・') + '）'); });
     eff.forEach(function (x) { var u = UNK_SKILL[x.name]; if (u && u.some(function (a) { return act.indexOf(a) >= 0; })) warns.push(x.name); });
-    return { hp: (lv + 19) * (10 + t2[0] * 0.6) * (1 + A.origHP), atk: ss.atk, def: lv * (0.5 + t2[2] * 0.08) * (1 + A.origDef) + A.origDefFlat, warns: warns, eff: eff };
+    return { t2: t2, ama: E.learnedSet(DATA, m).set.has(norm('アマノジャク')), hp: (lv + 19) * (10 + t2[0] * 0.6) * (1 + A.origHP), atk: ss.atk, def: lv * (0.5 + t2[2] * 0.08) * (1 + A.origDef) + A.origDefFlat, warns: warns, eff: eff };
   }
   function memo(en, r) {
     var p = [];
@@ -1680,6 +1679,7 @@ footer a{color:var(--acc);text-decoration:none}footer a:hover{text-decoration:un
     }
     h += '</details>';
     var r; try { r = compute(en); } catch (e) { r = null; }
+    if (r && r.ama) h += '<p class="muted" style="margin:6px 0 0">アマノジャクの効果で才能値が反転して計算されます（HP才能 ' + Math.round(r.t2[0] * 100) / 100 + '、Atk才能 ' + Math.round(r.t2[1] * 100) / 100 + '、Def才能 ' + Math.round(r.t2[2] * 100) / 100 + '）。</p>';
     if (r && r.warns.length) h += '<p class="warn" style="margin:6px 0 0">効果の値が未登録のため反映されていません: ' + esc(r.warns.join('、')) + '</p>';
     return h + '</div>';
   }
