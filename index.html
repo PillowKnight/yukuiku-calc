@@ -142,6 +142,8 @@ footer a{color:var(--acc);text-decoration:none}footer a:hover{text-decoration:un
 </main>
 <main id="hist" hidden>
 <h1 style="font-size:20px;margin:6px 0">アップデート履歴</h1>
+<h2>2026-11-22</h2>
+<ul><li>「元ステータス比較」に、魔王妹の「壁役おじさん召喚」で出る魔界四天王（サキュバス・フェニックス・マーメイド・ダークナイト）を追加（キャラ選択の「魔王妹の召喚」から選び、魔王妹のレベルを入れると元の最大HP・攻撃力・防御力を比べられます。才能値・スキルは固定で、ゆくせさりやバフは入りません）</li></ul>
 <h2>2026-10-31</h2>\n<ul><li>「キャラ別 才能・スキル枠」で、表の○をクリックするとそのスキルがページ下部の「習得スキルの格納」の各枠に入るように変更（固定枠は自動表示、「選択を解除」あり）。すでに格納したスキルは、格納した枠以外の枠番号クリックでは上に集まらない</li><li>「元ステータス比較」でアマノジャクを選べるように変更（選ぶと才能値が反転して計算され、反転後の才能値も表示）</li><li>「キャラ別 才能・スキル枠」の表を見やすく調整（固定枠を表から除外、文字サイズを小さく、スキル名の横幅を広げて無駄な改行を減らし、スマホで画面内に収まるように変更。枠番号の矢印をやめ、数字を押すとその枠のスキルが上に集まる形に変更）</li><li>「元ステータス比較」の浜辺のヴィーナスの計算を修正（ウェットスーツ装備時は、攻撃・防御に一律+100%ではなく、そのゆくせさりの元攻撃力・元防御力バフの効果量が+100%になる）</li><li>「元ステータス比較」の入力欄のレイアウトを整理（入力欄・プルダウンを必要な幅に縮め、才能値の幅を入力欄のすぐ右に表示。元ステータスに影響しないファンタズマスキルの欄を削除）</li><li>「元ステータス比較」で、天使の祈り（HP・攻撃・防御すべてに同じ上昇量）、浜辺のヴィーナス、目が赤いほど良い（上昇率を0〜128.63504%で入力）に対応。硬くなったまんじゅうは、アマノジャク習得時は防御才能値-5として計算</li></ul>\n<h2>2026-10-30</h2>
 <ul><li>メニューに「キャラ別 才能・スキル枠」を追加（キャラごとの才能値の幅と、枠ごとに習得できるスキルを、wikiと同じ形式の表で表示。枠の番号の横の▲で、その枠で習得できるスキルを上に集められます）</li><li>メニューに「元ステータス比較」を追加（複数のキャラを選び、レベル・才能値・ゆくせさり・スキル・特殊習得スキルを入れて、元の最大HP・攻撃力・防御力を比べられます。HP・Atk・Defのうち見たいものだけを選べて、昇順・降順の並べ替えと画像保存に対応）</li><li>「群れとしての強さ」の場に出ている数に、入力の上限を設けないように変更</li></ul>
 <h2>2026-10-29</h2>
@@ -1531,6 +1533,8 @@ footer a{color:var(--acc);text-decoration:none}footer a:hover{text-decoration:un
   var UNK_SPEC = {};
   var UNK_SKILL = {};
   var RED_MAX = 128.63504;
+  // 魔王妹『壁役おじさん召喚』で出る魔界四天王（才能値は固定。t=[HP,Atk,Def]、m=最大HPの種族倍率）
+  var SUMMON = { 'サキュバス（召喚）': { t: [23, 23, 23], m: 1.2 }, 'フェニックス（召喚）': { t: [7, 31, 7], m: 1 }, 'マーメイド（召喚）': { t: [26, 26, 26], m: 1.5 }, 'ダークナイト（召喚）': { t: [28, 28, 28], m: 1.5 } };
   var SKILL_WEAPONS = ['デスサイズ', 'ユグドラシルの杖'];
 
   function statsOfBuff(b) { var s = {}; if (!b.e) return s; STATS.forEach(function (x) { if (CHMAP[x[0]].some(function (k) { return b.e[k]; })) s[x[0]] = 1; }); return s; }
@@ -1562,7 +1566,7 @@ footer a{color:var(--acc);text-decoration:none}footer a:hover{text-decoration:un
   var uid = 1;
   function blank() { return { id: uid++, char: '', lv: 280, tal: [0, 0, 0, 0], weapon: null, yuku: '', yrank: '', sk: {}, sp: {}, red: RED_MAX, open: false }; }
   var S = { chk: { hp: true, atk: true, def: true }, ent: [], sort: null };
-  try { var raw = localStorage.getItem(KEY); if (raw) { var t = JSON.parse(raw); if (t && t.ent) { S.chk = t.chk || S.chk; S.ent = t.ent.filter(function (e) { return e.char && DATA.chars[e.char]; }).map(function (e) { e.id = uid++; return e; }); S.sort = t.sort || null; } } } catch (e) { }
+  try { var raw = localStorage.getItem(KEY); if (raw) { var t = JSON.parse(raw); if (t && t.ent) { S.chk = t.chk || S.chk; S.ent = t.ent.filter(function (e) { return e.char && (DATA.chars[e.char] || SUMMON[e.char]); }).map(function (e) { e.id = uid++; return e; }); S.sort = t.sort || null; } } } catch (e) { }
   function ensureBlank() { if (!S.ent.length || S.ent[S.ent.length - 1].char) S.ent.push(blank()); }
   ensureBlank();
   function save() { try { localStorage.setItem(KEY, JSON.stringify({ chk: S.chk, sort: S.sort, ent: S.ent.filter(function (e) { return e.char; }) })); } catch (e) { } }
@@ -1570,6 +1574,7 @@ footer a{color:var(--acc);text-decoration:none}footer a:hover{text-decoration:un
   var hit = function (st, act) { return act.some(function (a) { return st && st[a]; }); };
 
   function initEntry(en, name) {
+    if (SUMMON[name]) { en.char = name; en.tal = SUMMON[name].t.slice(); en.weapon = null; en.yuku = ''; en.yrank = ''; en.sk = {}; en.sp = {}; en.open = false; return; }
     var c = DATA.chars[name]; en.char = name;
     en.tal = name === '九尾分身体' ? [0, 0, 0, 0] : c.max.slice(); en.weapon = defaultWeapon(c); en.yuku = ''; en.yrank = ''; en.sk = {}; en.sp = {}; en.open = false;
   }
@@ -1596,6 +1601,7 @@ footer a{color:var(--acc);text-decoration:none}footer a:hover{text-decoration:un
 
   // ---- 計算 ----
   function compute(en) {
+    if (SUMMON[en.char]) { var sm = SUMMON[en.char], l0 = +en.lv || 1; return { t2: sm.t.slice(), ama: false, hp: (l0 + 19) * (10 + sm.t[0] * 0.6) * sm.m, atk: (l0 / 10) * (16 + sm.t[1]), def: l0 * (0.5 + sm.t[2] * 0.08), warns: [], eff: [] }; }
     var c = DATA.chars[en.char], list = skillList(en.char), eff = effSkills(en, list), skills = {};
     eff.forEach(function (x) {
       if (x.rank) { var a = skills[x.name]; if (!Array.isArray(a)) a = skills[x.name] = []; var rr = ROMAN[x.rank]; if (a.indexOf(rr) < 0) a.push(rr); } else skills[x.name] = true;
@@ -1662,8 +1668,10 @@ footer a{color:var(--acc);text-decoration:none}footer a:hover{text-decoration:un
   function entHtml(en, idx) {
     var act = active(), h = '<div class="card ent" data-id="' + en.id + '"><div class="bsrow"><label>' + (en.char ? 'キャラ' + (idx + 1) : '次のキャラ') + ' <select data-a="char" data-id="' + en.id + '">' + (en.char ? '' : '<option value="" selected>▼ キャラを選択して追加</option>');
     [1, 2, 3, 4].forEach(function (s) { h += '<optgroup label="★' + s + '">' + Object.keys(DATA.chars).filter(function (k) { return DATA.chars[k].star === s; }).map(function (k) { return opt(k, k, k === en.char); }).join('') + '</optgroup>'; });
+    h += '<optgroup label="魔王妹の召喚（壁役おじさん召喚）">' + Object.keys(SUMMON).map(function (k) { return opt(k, k, k === en.char); }).join('') + '</optgroup>';
     h += '</select></label>' + (en.char ? '<button class="btn sm" data-a="del" data-id="' + en.id + '">削除</button>' : '') + '</div>';
     if (!en.char) return h + '</div>';
+    if (SUMMON[en.char]) return h + '<div class="bsrow" style="margin-top:8px"><label>Lv <input type="text" inputmode="numeric" data-a="lv" data-id="' + en.id + '" value="' + esc(en.lv) + '"></label><span class="muted">魔王妹のLvを入力（才能値・スキルは固定、ゆくせさり・バフなし）</span></div></div>';
     var c = DATA.chars[en.char], names = ['HP', 'Atk', 'Def'], ti = { hp: 0, atk: 1, def: 2 };
     h += '<div class="bsrow" style="margin-top:8px"><label>Lv <input type="text" inputmode="numeric" data-a="lv" data-id="' + en.id + '" value="' + esc(en.lv) + '"></label>';
     STATS.forEach(function (x) {
@@ -1765,6 +1773,7 @@ footer a{color:var(--acc);text-decoration:none}footer a:hover{text-decoration:un
     else if (a === 'img') { var cv = makeImage(); if (cv) showImage(cv, '元ステータス比較.png'); }
   });
   root.addEventListener('change', function (ev) {
+    ev.stopPropagation(); // メインの計算機の change 処理（同名の data-a="char" を使う）に伝えない
     var t = ev.target, a = t.dataset.a; if (!a) return;
     if (a === 'chk') { S.chk[t.dataset.k] = t.checked; if (S.sort && !S.chk[S.sort.k]) S.sort = null; }
     else {
